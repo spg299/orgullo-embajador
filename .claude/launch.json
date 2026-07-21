@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "orgullo-embajador-dev",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd '/Users/santiagopg/Desktop/Orgullo embajador 1' && export PATH=\"/Users/santiagopg/Desktop/Orgullo embajador 1/.node-runtime/bin:$PATH\" && exec npm run dev"],
+      "port": 3000
+    }
+  ]
+}
