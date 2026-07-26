@@ -34,3 +34,6 @@ next-env.d.ts
 
 # portable node runtime (downloaded locally, not part of source)
 .node-runtime
+
+# portable GitHub CLI (downloaded locally, not part of source)
+.gh-cli
