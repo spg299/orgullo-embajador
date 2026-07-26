@@ -19,10 +19,14 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-navy-900/5 bg-white/80 backdrop-blur-lg">
       <Container className="flex h-20 items-center justify-between">
-        <Link href="/" className="flex items-center gap-2.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-royal-500 to-navy-900 font-display text-lg font-bold text-white shadow-card">
-            OE
-          </span>
+        <Link href="/" className="group flex items-center gap-2.5">
+          <img
+            src="/images/logo-orgullo-embajador.png"
+            alt="Orgullo Embajador"
+            width={112}
+            height={112}
+            className="h-14 w-14 rounded-xl object-contain shadow-card transition-transform duration-300 ease-out group-hover:scale-105"
+          />
           <span className="font-display text-lg font-bold leading-none text-navy-950">
             Orgullo
             <br />
