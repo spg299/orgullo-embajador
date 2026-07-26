@@ -4,13 +4,20 @@ import { useEffect, useState } from "react";
 import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import CrestBadge from "@/components/ui/CrestBadge";
-import StadiumIllustration from "@/components/home/StadiumIllustration";
 import { CalendarIcon, MapPinIcon, ArrowRightIcon } from "@/components/ui/Icons";
 import { featuredMatches } from "@/data/matches";
+
+const heroVideos = [
+  "/videos/hero-stadium.mp4",
+  "/videos/pasion-1.mp4",
+  "/videos/pasion-2.mp4",
+];
 
 export default function Hero() {
   const [index, setIndex] = useState(0);
   const match = featuredMatches[index];
+
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -19,11 +26,41 @@ export default function Hero() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTick((prev) => prev + 1);
+    }, 7000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Only two <video> elements ever exist in the DOM: the one on screen and the
+  // one preloading the next clip. They swap roles each tick so the crossfade
+  // never has more than two full-bleed videos decoding at once.
+  const activeLayer = tick % 2;
+  const activeSrc = heroVideos[tick % heroVideos.length];
+  const nextSrc = heroVideos[(tick + 1) % heroVideos.length];
+  const layerSrcs = activeLayer === 0 ? [activeSrc, nextSrc] : [nextSrc, activeSrc];
+
   return (
     <section id="inicio" className="relative overflow-hidden bg-navy-950">
       <div className="absolute inset-0">
-        <StadiumIllustration className="h-full w-full" />
-        <div className="absolute inset-0 bg-gradient-to-t from-navy-950 via-navy-950/70 to-navy-950/40" />
+        {[0, 1].map((layer) => (
+          <video
+            key={layer}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ease-in-out ${
+              layer === activeLayer ? "opacity-100" : "opacity-0"
+            }`}
+            src={layerSrcs[layer]}
+            poster="/images/gallery-tifo.webp"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            aria-hidden="true"
+          />
+        ))}
+        <div className="absolute inset-0 bg-navy-950/65" />
       </div>
 
       <Container className="relative flex min-h-[86vh] flex-col justify-center py-24">
