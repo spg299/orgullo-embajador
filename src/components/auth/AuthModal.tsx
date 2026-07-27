@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { supabaseAuthErrorMessage } from "@/lib/supabase/authErrors";
-import { SITE_URL } from "@/lib/email/resend";
+import { SITE_URL } from "@/lib/email/config";
 import Button from "@/components/ui/Button";
 import { CloseIcon } from "@/components/ui/Icons";
 

@@ -1,4 +1,4 @@
-import { LOGO_URL, SITE_URL } from "./resend";
+import { LOGO_URL, SITE_URL } from "./config";
 
 function emailLayout(bodyHtml: string): string {
   return `

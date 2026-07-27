@@ -1,15 +1,14 @@
-import { getResend, EMAIL_FROM } from "./resend";
+import { getMailer } from "./smtp";
+import { EMAIL_FROM } from "./config";
 import { welcomeEmailHtml, ticketsAvailableEmailHtml } from "./templates";
 
 export async function sendWelcomeEmail(to: string, name: string) {
-  const { data, error } = await getResend().emails.send({
+  return getMailer().sendMail({
     from: EMAIL_FROM,
     to,
     subject: "¡Bienvenido a Orgullo Embajador!",
     html: welcomeEmailHtml({ name }),
   });
-  if (error) throw error;
-  return data;
 }
 
 export interface TicketsAvailablePayload {
@@ -21,12 +20,10 @@ export interface TicketsAvailablePayload {
 }
 
 export async function sendTicketsAvailableEmail(to: string, payload: TicketsAvailablePayload) {
-  const { data, error } = await getResend().emails.send({
+  return getMailer().sendMail({
     from: EMAIL_FROM,
     to,
     subject: "🎟️ ¡Ya están disponibles las boletas!",
     html: ticketsAvailableEmailHtml(payload),
   });
-  if (error) throw error;
-  return data;
 }

@@ -37,3 +37,4 @@ next-env.d.ts
 
 # portable GitHub CLI (downloaded locally, not part of source)
 .gh-cli
+.env*

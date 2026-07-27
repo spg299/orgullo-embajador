@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendTicketsAvailableEmail } from "@/lib/email/send";
-import { SITE_URL } from "@/lib/email/resend";
+import { SITE_URL } from "@/lib/email/config";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
