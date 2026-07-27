@@ -14,17 +14,22 @@ const columns = [
   {
     title: "Contacto",
     links: [
-      { label: "WhatsApp: +57 300 000 0000", href: "#" },
-      { label: "soporte@orgulloembajador.co", href: "#" },
+      { label: "WhatsApp: +57 318 631 9954", href: "#" },
+      { label: "Soporte: +57 318 631 9954", href: "#" },
       { label: "Bogotá D.C., Colombia", href: "#" },
     ],
   },
 ];
 
 const socials = [
-  { label: "Instagram", href: "#" },
-  { label: "X", href: "#" },
-  { label: "Facebook", href: "#" },
+  {
+    label: "LinkedIn",
+    href: "https://www.linkedin.com/in/santiago-perdomo-gonzalez-68b4663b6/?locale=en",
+  },
+  {
+    label: "Instagram",
+    href: "https://www.instagram.com/orgullo.embajador/?hl=es",
+  },
   { label: "TikTok", href: "#" },
 ];
 
@@ -54,6 +59,9 @@ export default function Footer() {
                 <Link
                   key={social.label}
                   href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={social.label}
                   className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-xs font-semibold text-white/70 transition-colors hover:border-gold-400 hover:text-gold-400"
                 >
                   {social.label.slice(0, 2)}
@@ -89,6 +97,18 @@ export default function Footer() {
             demostración — no afiliado oficialmente a Millonarios F.C.
           </p>
           <p>Hecho con pasión azul en Bogotá, Colombia.</p>
+        </div>
+
+        <div className="mt-6 text-center text-xs text-white/30">
+          Desarrollado por{" "}
+          <Link
+            href="https://www.linkedin.com/in/santiago-perdomo-gonzalez-68b4663b6/?locale=en"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-white/50 transition-colors hover:text-gold-400"
+          >
+            Santiago Perdomo
+          </Link>
         </div>
       </Container>
     </footer>
