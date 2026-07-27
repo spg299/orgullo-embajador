@@ -6,10 +6,10 @@ const labelClasses = "text-sm font-medium text-navy-900/80";
 export default function PurchaseForm() {
   return (
     <div className="rounded-3xl border border-navy-900/8 bg-white p-6 shadow-card sm:p-8">
-      <h3 className="font-display text-xl font-bold text-navy-950">
+      <h3 className="font-display text-xl font-bold tracking-tight text-navy-950">
         Tus datos
       </h3>
-      <p className="mt-1 text-sm text-navy-700/60">
+      <p className="mt-1 text-sm font-medium text-navy-700/60">
         Usaremos esta información para confirmar tu compra y enviarte las
         boletas.
       </p>
@@ -65,7 +65,7 @@ export default function PurchaseForm() {
             type="checkbox"
             className="mt-1 h-4 w-4 shrink-0 rounded border-navy-900/25 text-royal-500 focus:ring-royal-300"
           />
-          <span className="text-sm text-navy-700/70">
+          <span className="text-sm font-medium text-navy-700/70">
             Acepto los{" "}
             <span className="font-semibold text-royal-500">
               términos y condiciones

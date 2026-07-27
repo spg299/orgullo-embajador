@@ -66,14 +66,14 @@ export default function PassionVideos() {
 
       <div className="container-page relative">
         <div className="mx-auto max-w-2xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-gold-300 backdrop-blur-sm">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-gold-300 backdrop-blur-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-gold-500" />
             El Campín
           </span>
-          <h2 className="mt-5 font-display text-4xl font-bold text-white sm:text-5xl">
+          <h2 className="mt-5 font-display text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
             Vive la pasión en El Campín
           </h2>
-          <p className="mt-4 text-white/60">
+          <p className="mt-4 font-medium leading-relaxed text-white/60">
             &ldquo;La mejor forma de vivir a Millonarios es desde la tribuna.
             Compra tus boletas y acompaña al equipo en el estadio.&rdquo;
           </p>

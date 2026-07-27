@@ -23,7 +23,7 @@ const sizeClasses: Record<Size, string> = {
 };
 
 const base =
-  "inline-flex items-center justify-center rounded-full font-semibold tracking-tight transition-all duration-300 ease-out active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none";
+  "inline-flex items-center justify-center rounded-full font-bold tracking-tight transition-all duration-300 ease-out active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none";
 
 interface CommonProps {
   variant?: Variant;

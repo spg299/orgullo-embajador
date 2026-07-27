@@ -71,11 +71,11 @@ function MatchCalendarCard({ match, delayMs }: { match: HomeMatch; delayMs: numb
         <StatusBadge status={match.status} />
       </div>
 
-      <p className="mt-4 font-display text-lg font-bold text-white">
+      <p className="mt-4 font-display text-lg font-bold tracking-tight text-white">
         Millonarios <span className="text-white/40">vs</span> {match.rival}
       </p>
 
-      <div className="mt-3 space-y-1.5 text-sm text-white/60">
+      <div className="mt-3 space-y-1.5 text-sm font-medium text-white/60">
         <p className="flex items-center gap-1.5">
           <CalendarIcon className="h-4 w-4 text-gold-400" />
           {match.date}
@@ -101,7 +101,7 @@ function MatchCalendarCard({ match, delayMs }: { match: HomeMatch; delayMs: numb
           <button
             type="button"
             disabled
-            className="w-full cursor-not-allowed rounded-full border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white/40"
+            className="w-full cursor-not-allowed rounded-full border border-white/10 bg-white/5 px-6 py-3 text-sm font-bold tracking-tight text-white/40"
           >
             {match.status === "agotado" ? "Agotado" : "Próximamente"}
           </button>
@@ -119,14 +119,14 @@ export default function HomeMatchesCalendar() {
 
       <Container className="relative">
         <div className="mx-auto max-w-2xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-gold-300 backdrop-blur-sm">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-gold-300 backdrop-blur-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-gold-500" />
             Calendario
           </span>
-          <h2 className="mt-5 font-display text-4xl font-bold text-white sm:text-5xl">
+          <h2 className="mt-5 font-display text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
             Calendario de partidos de local
           </h2>
-          <p className="mt-4 text-white/60">
+          <p className="mt-4 font-medium leading-relaxed text-white/60">
             Compra tus boletas para acompañar al Embajador en El Campín.
           </p>
         </div>

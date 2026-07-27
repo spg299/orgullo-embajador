@@ -29,7 +29,7 @@ export default function HowItWorks() {
       <Container>
         <div className="mx-auto max-w-2xl text-center">
           <SectionEyebrow>Proceso simple</SectionEyebrow>
-          <h2 className="mt-5 font-display text-4xl font-bold text-white sm:text-5xl">
+          <h2 className="mt-5 font-display text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
             Cómo funciona
           </h2>
         </div>
@@ -46,10 +46,10 @@ export default function HowItWorks() {
                     {step.number}
                   </span>
                 </div>
-                <h3 className="mt-6 font-display text-xl font-bold text-white">
+                <h3 className="mt-6 font-display text-xl font-bold tracking-tight text-white">
                   {step.title}
                 </h3>
-                <p className="mt-3 text-sm leading-relaxed text-white/50">
+                <p className="mt-3 text-sm font-medium leading-relaxed text-white/50">
                   {step.description}
                 </p>
               </div>

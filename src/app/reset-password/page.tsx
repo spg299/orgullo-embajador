@@ -65,24 +65,24 @@ export default function ResetPasswordPage() {
       <main className="flex-1 bg-royal-50/40 py-16 sm:py-24">
         <Container className="flex justify-center">
           <div className="w-full max-w-md rounded-3xl border border-navy-900/8 bg-white p-6 shadow-card sm:p-8">
-            <h1 className="font-display text-2xl font-bold text-navy-950">
+            <h1 className="font-display text-2xl font-bold tracking-tight text-navy-950">
               Restablecer contraseña
             </h1>
 
             {checkingSession ? (
-              <p className="mt-4 text-sm text-navy-700/60">Verificando enlace...</p>
+              <p className="mt-4 text-sm font-medium text-navy-700/60">Verificando enlace...</p>
             ) : !hasSession ? (
-              <p className="mt-4 rounded-xl bg-rose-50 px-4 py-6 text-center text-sm text-rose-700">
+              <p className="mt-4 rounded-xl bg-rose-50 px-4 py-6 text-center text-sm font-medium text-rose-700">
                 Este enlace no es válido o ya expiró. Solicita uno nuevo desde &quot;Iniciar
                 sesión&quot; → &quot;¿Olvidaste tu contraseña?&quot;.
               </p>
             ) : success ? (
-              <p className="mt-4 rounded-xl bg-royal-50/60 px-4 py-6 text-center text-sm text-navy-800">
+              <p className="mt-4 rounded-xl bg-royal-50/60 px-4 py-6 text-center text-sm font-medium text-navy-800">
                 ¡Contraseña actualizada! Te llevamos al inicio...
               </p>
             ) : (
               <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
-                <p className="text-sm text-navy-700/60">Ingresa tu nueva contraseña.</p>
+                <p className="text-sm font-medium text-navy-700/60">Ingresa tu nueva contraseña.</p>
                 <label className="flex flex-col gap-1.5">
                   <span className={labelClasses}>Nueva contraseña</span>
                   <input

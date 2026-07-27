@@ -72,17 +72,17 @@ export default function Hero() {
           key={match.id}
           className="max-w-2xl animate-fade-in-up"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-gold-300 backdrop-blur-sm">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-gold-300 backdrop-blur-sm">
             Boletas oficiales · Millonarios FC
           </span>
 
-          <h1 className="mt-6 font-display text-5xl font-extrabold leading-[1.05] text-white sm:text-6xl lg:text-7xl">
+          <h1 className="mt-6 font-display text-5xl font-black leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">
             Compra tus
             <br />
             <span className="text-gold-400">boletas</span>
           </h1>
 
-          <p className="mt-6 max-w-md text-lg text-white/70">
+          <p className="mt-6 max-w-md text-lg font-medium leading-relaxed text-white/70">
             Vive la pasión azul junto a Millonarios. Consigue tu puesto en El
             Campín en minutos.
           </p>
@@ -94,17 +94,17 @@ export default function Hero() {
                 <CrestBadge initial={match.rivalInitial} size="md" />
               </div>
               <div>
-                <p className="font-display text-lg font-bold text-white">
+                <p className="font-display text-lg font-bold tracking-tight text-white">
                   Millonarios <span className="text-white/40">vs</span>{" "}
                   {match.rival}
                 </p>
-                <p className="text-xs uppercase tracking-wider text-gold-300">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gold-300">
                   Liga BetPlay Dimayor
                 </p>
               </div>
             </div>
 
-            <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/70">
+            <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium text-white/70">
               <span className="flex items-center gap-1.5">
                 <CalendarIcon className="h-4 w-4 text-gold-400" />
                 {match.date} · {match.time}

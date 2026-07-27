@@ -46,7 +46,7 @@ export default function PurchaseFlow({ match }: { match: Match }) {
           >
             ← Volver al inicio
           </Link>
-          <h1 className="font-display text-3xl font-bold text-navy-950 sm:text-4xl">
+          <h1 className="font-display text-3xl font-extrabold tracking-tight text-navy-950 sm:text-4xl">
             Completa tu compra
           </h1>
         </div>
@@ -62,17 +62,17 @@ export default function PurchaseFlow({ match }: { match: Match }) {
               <CrestBadge initial={match.awayInitial} size="md" />
             </div>
             <div>
-              <p className="font-display text-lg font-bold text-navy-950">
+              <p className="font-display text-lg font-bold tracking-tight text-navy-950">
                 {match.home} <span className="text-navy-400">vs</span>{" "}
                 {match.away}
               </p>
-              <p className="text-xs uppercase tracking-wider text-royal-500">
+              <p className="text-xs font-semibold uppercase tracking-wider text-royal-500">
                 {match.competition}
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-sm text-navy-700/70">
+          <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-sm font-medium text-navy-700/70">
             <span className="flex items-center gap-1.5">
               <CalendarIcon className="h-4 w-4 text-royal-500" />
               {match.date} · {match.time}
@@ -87,10 +87,10 @@ export default function PurchaseFlow({ match }: { match: Match }) {
         <div className="mt-10 grid gap-8 lg:grid-cols-[1.6fr_1fr] lg:items-start">
           <div className="flex flex-col gap-8">
             <div className="rounded-3xl border border-navy-900/8 bg-white p-6 shadow-card sm:p-8">
-              <h2 className="font-display text-xl font-bold text-navy-950">
+              <h2 className="font-display text-xl font-bold tracking-tight text-navy-950">
                 Selecciona tus boletas
               </h2>
-              <p className="mt-1 text-sm text-navy-700/60">
+              <p className="mt-1 text-sm font-medium text-navy-700/60">
                 Escoge la localidad y la cantidad de boletas que deseas
                 comprar.
               </p>

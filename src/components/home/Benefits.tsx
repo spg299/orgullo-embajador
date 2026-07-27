@@ -29,7 +29,7 @@ export default function Benefits() {
       <Container>
         <div className="mx-auto max-w-2xl text-center">
           <SectionEyebrow>Por qué elegirnos</SectionEyebrow>
-          <h2 className="mt-5 font-display text-4xl font-bold text-navy-950 sm:text-5xl">
+          <h2 className="mt-5 font-display text-4xl font-extrabold tracking-tight text-navy-950 sm:text-5xl">
             Confianza en cada compra
           </h2>
         </div>
@@ -43,10 +43,10 @@ export default function Benefits() {
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-royal-500 to-navy-900 text-white transition-transform duration-300 group-hover:scale-105">
                 <Icon className="h-6 w-6" />
               </div>
-              <h3 className="mt-6 font-display text-xl font-bold text-navy-950">
+              <h3 className="mt-6 font-display text-xl font-bold tracking-tight text-navy-950">
                 {title}
               </h3>
-              <p className="mt-3 text-sm leading-relaxed text-navy-700/60">
+              <p className="mt-3 text-sm font-medium leading-relaxed text-navy-700/60">
                 {description}
               </p>
             </div>

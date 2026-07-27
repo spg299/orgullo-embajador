@@ -26,10 +26,10 @@ export default function TierRow({
           style={{ backgroundColor: tier.color }}
         />
         <div>
-          <p className="font-display text-base font-bold text-navy-950">
+          <p className="font-display text-base font-bold tracking-tight text-navy-950">
             {tier.name}
           </p>
-          <p className="mt-0.5 text-sm text-navy-700/60">{tier.description}</p>
+          <p className="mt-0.5 text-sm font-medium text-navy-700/60">{tier.description}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <AvailabilityBadge availability={tier.availability} />
             <span className="text-sm font-semibold text-navy-900">

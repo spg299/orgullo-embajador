@@ -43,13 +43,13 @@ export default function Footer() {
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-royal-400 to-royal-600 font-display text-lg font-bold text-white">
                 OE
               </span>
-              <span className="font-display text-lg font-bold leading-none text-white">
+              <span className="font-display text-lg font-extrabold leading-none tracking-tight text-white">
                 Orgullo
                 <br />
                 <span className="text-gold-400">Embajador</span>
               </span>
             </Link>
-            <p className="mt-5 max-w-sm text-sm leading-relaxed text-white/50">
+            <p className="mt-5 max-w-sm text-sm font-medium leading-relaxed text-white/50">
               La plataforma oficial para vivir cada partido de Millonarios FC.
               Boletas garantizadas, atención personalizada y toda la pasión
               azul en un solo lugar.
@@ -72,7 +72,7 @@ export default function Footer() {
 
           {columns.map((column) => (
             <div key={column.title}>
-              <h4 className="font-display text-sm font-semibold uppercase tracking-widest text-white">
+              <h4 className="font-display text-sm font-bold uppercase tracking-widest text-white">
                 {column.title}
               </h4>
               <ul className="mt-5 space-y-3">
@@ -80,7 +80,7 @@ export default function Footer() {
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-sm text-white/50 transition-colors hover:text-gold-400"
+                      className="text-sm font-medium text-white/50 transition-colors hover:text-gold-400"
                     >
                       {link.label}
                     </Link>
@@ -91,7 +91,7 @@ export default function Footer() {
           ))}
         </div>
 
-        <div className="mt-14 flex flex-col gap-4 border-t border-white/10 pt-8 text-xs text-white/40 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-14 flex flex-col gap-4 border-t border-white/10 pt-8 text-xs font-medium text-white/40 sm:flex-row sm:items-center sm:justify-between">
           <p>
             © 2026 Orgullo Embajador. Todos los derechos reservados. Sitio de
             demostración — no afiliado oficialmente a Millonarios F.C.
@@ -99,7 +99,7 @@ export default function Footer() {
           <p>Hecho con pasión azul en Bogotá, Colombia.</p>
         </div>
 
-        <div className="mt-6 text-center text-xs text-white/30">
+        <div className="mt-6 text-center text-xs font-medium text-white/30">
           Desarrollado por{" "}
           <Link
             href="https://www.linkedin.com/in/santiago-perdomo-gonzalez-68b4663b6/?locale=en"

@@ -115,8 +115,8 @@ export default function AuthModal({
 
         {view === "login" && (
           <>
-            <h2 className="font-display text-2xl font-bold text-navy-950 pr-8">Iniciar sesión</h2>
-            <p className="mt-1 text-sm text-navy-700/60">
+            <h2 className="font-display text-2xl font-bold tracking-tight text-navy-950 pr-8">Iniciar sesión</h2>
+            <p className="mt-1 text-sm font-medium text-navy-700/60">
               Ingresa para gestionar tus compras de boletas.
             </p>
 
@@ -159,7 +159,7 @@ export default function AuthModal({
               </Button>
             </form>
 
-            <p className="mt-6 text-center text-sm text-navy-700/60">
+            <p className="mt-6 text-center text-sm font-medium text-navy-700/60">
               ¿No tienes cuenta?{" "}
               <button
                 type="button"
@@ -174,13 +174,13 @@ export default function AuthModal({
 
         {view === "register" && (
           <>
-            <h2 className="font-display text-2xl font-bold text-navy-950 pr-8">Crear cuenta</h2>
-            <p className="mt-1 text-sm text-navy-700/60">
+            <h2 className="font-display text-2xl font-bold tracking-tight text-navy-950 pr-8">Crear cuenta</h2>
+            <p className="mt-1 text-sm font-medium text-navy-700/60">
               Únete para recibir aviso cuando haya nuevas boletas disponibles.
             </p>
 
             {confirmEmailSent ? (
-              <p className="mt-6 rounded-xl bg-royal-50/60 px-4 py-6 text-center text-sm text-navy-800">
+              <p className="mt-6 rounded-xl bg-royal-50/60 px-4 py-6 text-center text-sm font-medium text-navy-800">
                 ¡Listo! Revisa tu correo (<strong>{email}</strong>) y confirma tu cuenta antes de
                 iniciar sesión.
               </p>
@@ -229,7 +229,7 @@ export default function AuthModal({
               </form>
             )}
 
-            <p className="mt-6 text-center text-sm text-navy-700/60">
+            <p className="mt-6 text-center text-sm font-medium text-navy-700/60">
               ¿Ya tienes cuenta?{" "}
               <button
                 type="button"
@@ -244,15 +244,15 @@ export default function AuthModal({
 
         {view === "forgot" && (
           <>
-            <h2 className="font-display text-2xl font-bold text-navy-950 pr-8">
+            <h2 className="font-display text-2xl font-bold tracking-tight text-navy-950 pr-8">
               Recuperar contraseña
             </h2>
-            <p className="mt-1 text-sm text-navy-700/60">
+            <p className="mt-1 text-sm font-medium text-navy-700/60">
               Te enviaremos un correo con instrucciones para restablecerla.
             </p>
 
             {resetSent ? (
-              <p className="mt-6 rounded-xl bg-royal-50/60 px-4 py-6 text-center text-sm text-navy-800">
+              <p className="mt-6 rounded-xl bg-royal-50/60 px-4 py-6 text-center text-sm font-medium text-navy-800">
                 Listo — revisa tu correo (<strong>{email}</strong>) para continuar.
               </p>
             ) : (
@@ -277,7 +277,7 @@ export default function AuthModal({
               </form>
             )}
 
-            <p className="mt-6 text-center text-sm text-navy-700/60">
+            <p className="mt-6 text-center text-sm font-medium text-navy-700/60">
               <button
                 type="button"
                 onClick={() => switchView("login")}

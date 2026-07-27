@@ -22,10 +22,10 @@ export default function WhatsAppCheckoutBox({
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-whatsapp-500 text-white">
           <CheckIcon className="h-7 w-7" />
         </div>
-        <h3 className="mt-4 font-display text-lg font-bold text-navy-950">
+        <h3 className="mt-4 font-display text-lg font-bold tracking-tight text-navy-950">
           ¡Solicitud enviada!
         </h3>
-        <p className="mx-auto mt-2 max-w-sm text-sm text-navy-700/70">
+        <p className="mx-auto mt-2 max-w-sm text-sm font-medium text-navy-700/70">
           Esta es una simulación de la maqueta: en producción se abriría un
           chat de WhatsApp con uno de nuestros asesores para continuar tu
           compra.
@@ -40,19 +40,19 @@ export default function WhatsAppCheckoutBox({
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-whatsapp-500 text-white">
           <WhatsAppIcon className="h-5 w-5" />
         </div>
-        <h3 className="font-display text-lg font-bold text-navy-950">
+        <h3 className="font-display text-lg font-bold tracking-tight text-navy-950">
           Compra por WhatsApp
         </h3>
       </div>
 
-      <p className="mt-4 text-sm leading-relaxed text-navy-800/80">
+      <p className="mt-4 text-sm font-medium leading-relaxed text-navy-800/80">
         Al hacer clic continuarás la compra con uno de nuestros asesores por
         WhatsApp.
       </p>
 
       <ul className="mt-4 space-y-2.5">
         {checklist.map((item) => (
-          <li key={item} className="flex items-start gap-2.5 text-sm text-navy-800/80">
+          <li key={item} className="flex items-start gap-2.5 text-sm font-medium text-navy-800/80">
             <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-whatsapp-600" />
             {item}
           </li>
@@ -72,7 +72,7 @@ export default function WhatsAppCheckoutBox({
       </Button>
 
       {disabled && (
-        <p className="mt-3 text-center text-xs text-navy-700/50">
+        <p className="mt-3 text-center text-xs font-medium text-navy-700/50">
           Selecciona al menos una boleta para continuar.
         </p>
       )}
