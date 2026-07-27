@@ -12,6 +12,9 @@ const palettes: Record<string, { from: string; to: string; text: string }> = {
   UM: { from: "#f97316", to: "#9a3412", text: "#ffffff" },
   AD: { from: "#ca8a04", to: "#1c1917", text: "#ffffff" },
   AM: { from: "#dc2626", to: "#7f1d1d", text: "#ffffff" },
+  DP: { from: "#9f1239", to: "#4c0519", text: "#ffffff" },
+  IB: { from: "#6366f1", to: "#312e81", text: "#ffffff" },
+  JG: { from: "#65a30d", to: "#1a2e05", text: "#ffffff" },
 };
 
 export default function CrestBadge({
