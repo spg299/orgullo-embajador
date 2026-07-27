@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import Container from "@/components/ui/Container";
@@ -15,6 +15,19 @@ const links = [
   { href: "/#como-comprar", label: "Cómo comprar" },
   { href: "/#contacto", label: "Contacto" },
 ];
+
+// 6 staggered items total: the 4 nav links + the WhatsApp button + the
+// login/logout button. Kept in sync with the JSX below so open/close
+// stagger delays line up in both directions.
+const MOBILE_ITEM_COUNT = links.length + 2;
+const MOBILE_STAGGER_MS = 70;
+const MOBILE_ITEM_TRANSITION =
+  "transition-all duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)]";
+
+function mobileItemStyle(open: boolean, index: number): CSSProperties {
+  const delayIndex = open ? index : MOBILE_ITEM_COUNT - 1 - index;
+  return { transitionDelay: `${delayIndex * MOBILE_STAGGER_MS}ms` };
+}
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -80,68 +93,101 @@ export default function Navbar() {
           </div>
 
           <button
-            aria-label="Abrir menú"
+            aria-label={open ? "Cerrar menú" : "Abrir menú"}
+            aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
-            className="flex h-10 w-10 items-center justify-center rounded-full text-navy-900 lg:hidden"
+            className="relative z-10 flex h-10 w-10 items-center justify-center rounded-full text-navy-900 lg:hidden"
           >
             {open ? <CloseIcon /> : <MenuIcon />}
           </button>
         </Container>
 
-        {open && (
-          <div className="border-t border-navy-900/5 bg-white lg:hidden">
-            <Container className="flex flex-col gap-1 py-4">
-              {links.map((link) => (
+        <div
+          aria-hidden={!open}
+          className={`grid overflow-hidden border-t border-navy-900/5 bg-white transition-[grid-template-rows] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] lg:hidden ${
+            open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+          }`}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <Container
+              className={`flex flex-col gap-1 py-4 transition-opacity duration-300 ${
+                open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+              }`}
+            >
+              {links.map((link, i) => (
                 <Link
                   key={link.href}
                   href={link.href}
                   onClick={() => setOpen(false)}
-                  className="rounded-lg px-3 py-2.5 text-sm font-medium text-navy-800 hover:bg-royal-50"
+                  tabIndex={open ? 0 : -1}
+                  style={mobileItemStyle(open, i)}
+                  className={`group relative rounded-lg px-3 py-2.5 text-sm font-medium text-navy-800 hover:scale-[1.025] hover:text-royal-500 ${MOBILE_ITEM_TRANSITION} ${
+                    open ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"
+                  }`}
                 >
                   {link.label}
+                  <span className="pointer-events-none absolute inset-x-3 bottom-1 h-[2px] origin-left scale-x-0 bg-royal-500 transition-transform duration-300 ease-out group-hover:scale-x-100" />
                 </Link>
               ))}
-              <div className="mt-2 flex flex-col gap-2 px-1">
-                <Button
-                  variant="whatsapp"
-                  size="sm"
-                  icon={<WhatsAppIcon className="h-4 w-4" />}
-                >
-                  WhatsApp
-                </Button>
 
-                {!loading && user ? (
-                  <>
-                    <p className="px-1 text-sm font-medium text-navy-800">
-                      Hola, {firstName ?? "usuario"}
-                    </p>
+              <div className="mt-2 flex flex-col gap-2 px-1">
+                <div
+                  style={mobileItemStyle(open, links.length)}
+                  className={`${MOBILE_ITEM_TRANSITION} ${
+                    open ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"
+                  }`}
+                >
+                  <Button
+                    variant="whatsapp"
+                    size="sm"
+                    icon={<WhatsAppIcon className="h-4 w-4" />}
+                    tabIndex={open ? 0 : -1}
+                  >
+                    WhatsApp
+                  </Button>
+                </div>
+
+                <div
+                  style={mobileItemStyle(open, links.length + 1)}
+                  className={`flex flex-col gap-2 ${MOBILE_ITEM_TRANSITION} ${
+                    open ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"
+                  }`}
+                >
+                  {!loading && user ? (
+                    <>
+                      <p className="px-1 text-sm font-medium text-navy-800">
+                        Hola, {firstName ?? "usuario"}
+                      </p>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        tabIndex={open ? 0 : -1}
+                        onClick={() => {
+                          supabase.auth.signOut();
+                          setOpen(false);
+                        }}
+                      >
+                        Cerrar sesión
+                      </Button>
+                    </>
+                  ) : (
                     <Button
                       variant="secondary"
                       size="sm"
+                      tabIndex={open ? 0 : -1}
                       onClick={() => {
-                        supabase.auth.signOut();
+                        setAuthOpen(true);
                         setOpen(false);
                       }}
                     >
-                      Cerrar sesión
+                      Iniciar sesión
                     </Button>
-                  </>
-                ) : (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      setAuthOpen(true);
-                      setOpen(false);
-                    }}
-                  >
-                    Iniciar sesión
-                  </Button>
-                )}
+                  )}
+                </div>
               </div>
             </Container>
           </div>
-        )}
+        </div>
       </header>
 
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
