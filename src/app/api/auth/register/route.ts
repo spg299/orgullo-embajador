@@ -1,42 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { FieldValue } from "firebase-admin/firestore";
-import { getAdminAuth, getAdminDb } from "@/lib/firebase/admin";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendWelcomeEmail } from "@/lib/email/send";
 
 export async function POST(request: NextRequest) {
-  const { idToken, name } = await request.json();
+  const { accessToken } = await request.json();
 
-  if (!idToken || !name) {
-    return NextResponse.json({ error: "Missing idToken or name" }, { status: 400 });
+  if (!accessToken) {
+    return NextResponse.json({ error: "Missing accessToken" }, { status: 400 });
   }
 
-  let decoded;
-  try {
-    decoded = await getAdminAuth().verifyIdToken(idToken);
-  } catch {
+  const { data, error } = await getSupabaseAdmin().auth.getUser(accessToken);
+
+  if (error || !data.user?.email) {
     return NextResponse.json({ error: "Invalid session" }, { status: 401 });
   }
 
-  const { uid, email } = decoded;
-  if (!email) {
-    return NextResponse.json({ error: "Account has no email" }, { status: 400 });
-  }
+  const name = (data.user.user_metadata?.full_name as string | undefined) ?? "";
 
-  const userRef = getAdminDb().collection("users").doc(uid);
-  const existing = await userRef.get();
-
-  if (!existing.exists) {
-    await userRef.set({
-      name,
-      email,
-      createdAt: FieldValue.serverTimestamp(),
-    });
-
-    try {
-      await sendWelcomeEmail(email, name);
-    } catch (error) {
-      console.error("Failed to send welcome email", error);
-    }
+  try {
+    await sendWelcomeEmail(data.user.email, name);
+  } catch (err) {
+    console.error("Failed to send welcome email", err);
   }
 
   return NextResponse.json({ ok: true });

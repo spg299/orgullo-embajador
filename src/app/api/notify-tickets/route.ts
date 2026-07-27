@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase/admin";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendTicketsAvailableEmail } from "@/lib/email/send";
 import { SITE_URL } from "@/lib/email/resend";
 
@@ -24,9 +24,16 @@ export async function POST(request: NextRequest) {
 
   const buyUrl = matchId ? `${SITE_URL}/comprar?match=${matchId}` : `${SITE_URL}/comprar`;
 
-  const usersSnapshot = await getAdminDb().collection("users").get();
-  const emails = usersSnapshot.docs
-    .map((doc) => doc.data().email as string | undefined)
+  const { data: profiles, error } = await getSupabaseAdmin()
+    .from("profiles")
+    .select("email");
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  const emails = (profiles ?? [])
+    .map((row) => row.email as string | null)
     .filter((email): email is string => Boolean(email));
 
   let sent = 0;
@@ -36,8 +43,8 @@ export async function POST(request: NextRequest) {
     try {
       await sendTicketsAvailableEmail(email, { match, rival, date, stadium, buyUrl });
       sent += 1;
-    } catch (error) {
-      console.error(`Failed to notify ${email}`, error);
+    } catch (err) {
+      console.error(`Failed to notify ${email}`, err);
       failed += 1;
     }
     await sleep(150);

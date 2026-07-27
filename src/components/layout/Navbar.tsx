@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase/client";
+import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
@@ -22,7 +21,7 @@ export default function Navbar() {
   const [authOpen, setAuthOpen] = useState(false);
   const { user, loading } = useAuth();
 
-  const firstName = user?.displayName?.split(" ")[0];
+  const firstName = (user?.user_metadata?.full_name as string | undefined)?.split(" ")[0];
 
   return (
     <>
@@ -69,7 +68,7 @@ export default function Navbar() {
                 <span className="text-sm font-medium text-navy-800">
                   Hola, {firstName ?? "usuario"}
                 </span>
-                <Button variant="ghost" size="sm" onClick={() => signOut(auth)}>
+                <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()}>
                   Cerrar sesión
                 </Button>
               </div>
@@ -120,7 +119,7 @@ export default function Navbar() {
                       variant="secondary"
                       size="sm"
                       onClick={() => {
-                        signOut(auth);
+                        supabase.auth.signOut();
                         setOpen(false);
                       }}
                     >

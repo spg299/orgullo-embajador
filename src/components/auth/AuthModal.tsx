@@ -1,14 +1,9 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import {
-  createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-  updateProfile,
-} from "firebase/auth";
-import { auth } from "@/lib/firebase/client";
-import { firebaseAuthErrorMessage } from "@/lib/firebase/authErrors";
+import { supabase } from "@/lib/supabase/client";
+import { supabaseAuthErrorMessage } from "@/lib/supabase/authErrors";
+import { SITE_URL } from "@/lib/email/resend";
 import Button from "@/components/ui/Button";
 import { CloseIcon } from "@/components/ui/Icons";
 
@@ -33,16 +28,18 @@ export default function AuthModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
+  const [confirmEmailSent, setConfirmEmailSent] = useState(false);
 
   async function handleLogin(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
       onClose();
     } catch (err) {
-      setError(firebaseAuthErrorMessage(err));
+      setError(supabaseAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -53,19 +50,28 @@ export default function AuthModal({
     setError(null);
     setLoading(true);
     try {
-      const credential = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(credential.user, { displayName: name });
-      const idToken = await credential.user.getIdToken();
-
-      await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken, name }),
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: name },
+          emailRedirectTo: SITE_URL,
+        },
       });
+      if (error) throw error;
 
-      onClose();
+      if (data.session) {
+        fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accessToken: data.session.access_token }),
+        }).catch(() => {});
+        onClose();
+      } else {
+        setConfirmEmailSent(true);
+      }
     } catch (err) {
-      setError(firebaseAuthErrorMessage(err));
+      setError(supabaseAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -76,10 +82,13 @@ export default function AuthModal({
     setError(null);
     setLoading(true);
     try {
-      await sendPasswordResetEmail(auth, email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${SITE_URL}/reset-password`,
+      });
+      if (error) throw error;
       setResetSent(true);
     } catch (err) {
-      setError(firebaseAuthErrorMessage(err));
+      setError(supabaseAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -89,6 +98,7 @@ export default function AuthModal({
     setView(next);
     setError(null);
     setResetSent(false);
+    setConfirmEmailSent(false);
   }
 
   return (
@@ -169,48 +179,55 @@ export default function AuthModal({
               Únete para recibir aviso cuando haya nuevas boletas disponibles.
             </p>
 
-            <form className="mt-6 flex flex-col gap-4" onSubmit={handleRegister}>
-              <label className="flex flex-col gap-1.5">
-                <span className={labelClasses}>Nombre completo</span>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className={inputClasses}
-                  placeholder="Ej. Juan Pérez Gómez"
-                />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className={labelClasses}>Correo electrónico</span>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={inputClasses}
-                  placeholder="tucorreo@ejemplo.com"
-                />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className={labelClasses}>Contraseña</span>
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={inputClasses}
-                  placeholder="Mínimo 6 caracteres"
-                />
-              </label>
+            {confirmEmailSent ? (
+              <p className="mt-6 rounded-xl bg-royal-50/60 px-4 py-6 text-center text-sm text-navy-800">
+                ¡Listo! Revisa tu correo (<strong>{email}</strong>) y confirma tu cuenta antes de
+                iniciar sesión.
+              </p>
+            ) : (
+              <form className="mt-6 flex flex-col gap-4" onSubmit={handleRegister}>
+                <label className="flex flex-col gap-1.5">
+                  <span className={labelClasses}>Nombre completo</span>
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className={inputClasses}
+                    placeholder="Ej. Juan Pérez Gómez"
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className={labelClasses}>Correo electrónico</span>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={inputClasses}
+                    placeholder="tucorreo@ejemplo.com"
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className={labelClasses}>Contraseña</span>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={inputClasses}
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                </label>
 
-              {error && <p className="text-sm text-rose-600">{error}</p>}
+                {error && <p className="text-sm text-rose-600">{error}</p>}
 
-              <Button type="submit" variant="primary" className="mt-2 w-full" disabled={loading}>
-                {loading ? "Creando cuenta..." : "Crear cuenta"}
-              </Button>
-            </form>
+                <Button type="submit" variant="primary" className="mt-2 w-full" disabled={loading}>
+                  {loading ? "Creando cuenta..." : "Crear cuenta"}
+                </Button>
+              </form>
+            )}
 
             <p className="mt-6 text-center text-sm text-navy-700/60">
               ¿Ya tienes cuenta?{" "}
