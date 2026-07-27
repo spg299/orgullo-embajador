@@ -91,24 +91,32 @@ export default function Footer() {
           ))}
         </div>
 
-        <div className="mt-14 flex flex-col gap-4 border-t border-white/10 pt-8 text-xs font-medium text-white/40 sm:flex-row sm:items-center sm:justify-between">
-          <p>
-            © 2026 Orgullo Embajador. Todos los derechos reservados. Sitio de
-            demostración — no afiliado oficialmente a Millonarios F.C.
-          </p>
-          <p>Hecho con pasión azul en Bogotá, Colombia.</p>
-        </div>
+        <div className="mt-14 flex flex-col items-center gap-3 border-t border-white/10 pt-8 text-center text-xs font-medium text-white/40">
+          <p>© 2026 Orgullo Embajador. Todos los derechos reservados.</p>
 
-        <div className="mt-6 text-center text-xs font-medium text-white/30">
-          Desarrollado por{" "}
-          <Link
-            href="https://www.linkedin.com/in/santiago-perdomo-gonzalez-68b4663b6/?locale=en"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-white/50 transition-colors hover:text-gold-400"
-          >
-            Santiago Perdomo
-          </Link>
+          <p className="text-white/30">
+            Desarrollado por{" "}
+            <Link
+              href="https://www.linkedin.com/in/santiago-perdomo-gonzalez-68b4663b6/?locale=en"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-white/50 transition-colors hover:text-gold-400"
+            >
+              Santiago Perdomo
+            </Link>
+          </p>
+
+          <p className="text-white/30">
+            Contacto del desarrollador:{" "}
+            <Link
+              href="https://wa.me/573197906681"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-white/50 transition-colors hover:text-whatsapp-500"
+            >
+              +57 319 790 6681
+            </Link>
+          </p>
         </div>
       </Container>
     </footer>
