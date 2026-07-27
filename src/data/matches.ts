@@ -1,3 +1,5 @@
+import { homeMatches } from "./homeMatches";
+
 export interface Match {
   id: string;
   home: string;
@@ -70,5 +72,27 @@ export const featuredMatches = matches.filter((match) => match.featured);
 export const upcomingMatches = matches.slice(0, 3);
 
 export function getMatchById(id: string | undefined): Match {
-  return matches.find((match) => match.id === id) ?? matches[0];
+  const fromMatches = matches.find((match) => match.id === id);
+  if (fromMatches) return fromMatches;
+
+  // Falls back to the home-match calendar so links generated from that
+  // single source of truth (Hero, calendar cards) always resolve to the
+  // right match on the purchase page too.
+  const fromHomeMatches = homeMatches.find((match) => match.id === id);
+  if (fromHomeMatches) {
+    return {
+      id: fromHomeMatches.id,
+      home: "Millonarios",
+      away: fromHomeMatches.rival,
+      homeInitial: "M",
+      awayInitial: fromHomeMatches.rivalInitial,
+      competition: "Liga BetPlay Dimayor",
+      date: fromHomeMatches.date,
+      time: fromHomeMatches.time,
+      stadium: fromHomeMatches.stadium,
+      city: "Bogotá D.C.",
+    };
+  }
+
+  return matches[0];
 }

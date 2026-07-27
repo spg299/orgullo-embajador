@@ -5,7 +5,7 @@ import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import CrestBadge from "@/components/ui/CrestBadge";
 import { CalendarIcon, MapPinIcon, ArrowRightIcon } from "@/components/ui/Icons";
-import { featuredMatches } from "@/data/matches";
+import { homeMatches } from "@/data/homeMatches";
 
 const heroVideos = [
   "/videos/hero-stadium.mp4",
@@ -13,16 +13,20 @@ const heroVideos = [
   "/videos/pasion-2.mp4",
 ];
 
+// Same source of truth as the "Calendario de partidos de local" section:
+// the next matches that aren't sold out, in schedule order.
+const upcomingMatches = homeMatches.filter((m) => m.status !== "agotado").slice(0, 3);
+
 export default function Hero() {
   const [index, setIndex] = useState(0);
-  const match = featuredMatches[index];
+  const match = upcomingMatches[index];
 
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setIndex((prev) => (prev + 1) % featuredMatches.length);
-    }, 5500);
+      setIndex((prev) => (prev + 1) % upcomingMatches.length);
+    }, 5000);
     return () => clearInterval(timer);
   }, []);
 
@@ -86,16 +90,16 @@ export default function Hero() {
           <div className="mt-10 rounded-3xl border border-white/10 bg-white/[0.06] p-5 shadow-soft backdrop-blur-md sm:p-6">
             <div className="flex items-center gap-4">
               <div className="flex items-center -space-x-3">
-                <CrestBadge initial={match.homeInitial} size="md" />
-                <CrestBadge initial={match.awayInitial} size="md" />
+                <CrestBadge initial="M" size="md" />
+                <CrestBadge initial={match.rivalInitial} size="md" />
               </div>
               <div>
                 <p className="font-display text-lg font-bold text-white">
-                  {match.home} <span className="text-white/40">vs</span>{" "}
-                  {match.away}
+                  Millonarios <span className="text-white/40">vs</span>{" "}
+                  {match.rival}
                 </p>
                 <p className="text-xs uppercase tracking-wider text-gold-300">
-                  {match.competition}
+                  Liga BetPlay Dimayor
                 </p>
               </div>
             </div>
@@ -107,13 +111,13 @@ export default function Hero() {
               </span>
               <span className="flex items-center gap-1.5">
                 <MapPinIcon className="h-4 w-4 text-gold-400" />
-                {match.stadium}, {match.city}
+                {match.stadium}, Bogotá D.C.
               </span>
             </div>
 
             <div className="mt-6">
               <Button
-                href={`/comprar?match=${match.id}`}
+                href={match.buyLink ?? `/comprar?match=${match.id}`}
                 variant="primary"
                 size="lg"
                 icon={<ArrowRightIcon className="h-4 w-4" />}
@@ -127,10 +131,10 @@ export default function Hero() {
         </div>
 
         <div className="mt-10 flex items-center gap-2.5">
-          {featuredMatches.map((m, i) => (
+          {upcomingMatches.map((m, i) => (
             <button
               key={m.id}
-              aria-label={`Ver partido ${m.home} vs ${m.away}`}
+              aria-label={`Ver partido Millonarios vs ${m.rival}`}
               onClick={() => setIndex(i)}
               className={`h-1.5 rounded-full transition-all duration-500 ${
                 i === index ? "w-8 bg-gold-400" : "w-3 bg-white/25 hover:bg-white/40"
