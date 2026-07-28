@@ -21,6 +21,7 @@ const AUTOPLAY_MS = 5000;
 const RESUME_DELAY_MS = 6000;
 const SLIDE_TRANSITION_MS = 500;
 const DRAG_THRESHOLD_RATIO = 0.18;
+const DRAG_DEADZONE_PX = 6;
 
 export default function Hero() {
   const [index, setIndex] = useState(0);
@@ -31,6 +32,7 @@ export default function Hero() {
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const dragStartX = useRef(0);
+  const hasCapturedPointer = useRef(false);
   const resumeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [tick, setTick] = useState(0);
@@ -73,26 +75,37 @@ export default function Hero() {
   }
 
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
-    // Stops the browser's native link/image drag-ghost from kicking in when
-    // the gesture starts on the "Comprar ahora" link, without blocking the
-    // click a plain tap still needs to fire on release.
-    e.preventDefault();
+    // Deliberately no preventDefault/setPointerCapture here: doing either
+    // unconditionally on pointerdown also swallowed the click on the
+    // "Comprar ahora" link for a plain tap (setPointerCapture in particular
+    // re-targets the *native* click to this wrapper instead of the link
+    // underneath it). Both only kick in from handlePointerMove below, once
+    // real drag movement is confirmed — a tap that never moves reaches the
+    // link untouched.
     setViewportWidthPx(viewportRef.current?.offsetWidth || 1);
     dragStartX.current = e.clientX;
+    hasCapturedPointer.current = false;
     setIsDragging(true);
     pauseThenResume();
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
-      // Some browsers/pointer types can report an id that's no longer
-      // active by the time capture is requested; the drag still works
-      // fine without capture in that case.
-    }
   }
 
   function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
     if (!isDragging) return;
-    setDragX(e.clientX - dragStartX.current);
+    const delta = e.clientX - dragStartX.current;
+    if (Math.abs(delta) > DRAG_DEADZONE_PX) {
+      e.preventDefault();
+      if (!hasCapturedPointer.current) {
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId);
+          hasCapturedPointer.current = true;
+        } catch {
+          // Some browsers/pointer types can report an id that's no longer
+          // active by the time capture is requested; the drag still works
+          // fine without capture in that case.
+        }
+      }
+    }
+    setDragX(delta);
   }
 
   function endDrag() {
