@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import type { MouseEvent } from "react";
 import Container from "@/components/ui/Container";
+import { HomeIcon, InstagramIcon, LinkedInIcon } from "@/components/ui/Icons";
 
 const columns = [
   {
@@ -25,13 +29,29 @@ const socials = [
   {
     label: "LinkedIn",
     href: "https://www.linkedin.com/in/santiago-perdomo-gonzalez-68b4663b6/?locale=en",
+    icon: LinkedInIcon,
+    external: true,
   },
   {
     label: "Instagram",
     href: "https://www.instagram.com/orgullo.embajador/?hl=es",
+    icon: InstagramIcon,
+    external: true,
   },
-  { label: "TikTok", href: "#" },
+  {
+    label: "Inicio",
+    href: "/#inicio",
+    icon: HomeIcon,
+    external: false,
+  },
 ];
+
+function scrollToTop(e: MouseEvent<HTMLAnchorElement>) {
+  const target = document.getElementById("inicio");
+  if (!target) return;
+  e.preventDefault();
+  target.scrollIntoView({ behavior: "smooth" });
+}
 
 export default function Footer() {
   return (
@@ -59,12 +79,12 @@ export default function Footer() {
                 <Link
                   key={social.label}
                   href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  {...(social.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                  onClick={social.external ? undefined : scrollToTop}
                   aria-label={social.label}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-xs font-semibold text-white/70 transition-colors hover:border-gold-400 hover:text-gold-400"
+                  className="group flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-transparent text-white/70 transition-[background-color,border-color] duration-[250ms] hover:border-royal-400 hover:bg-royal-500/10"
                 >
-                  {social.label.slice(0, 2)}
+                  <social.icon className="h-[18px] w-[18px] transition-transform duration-[250ms] group-hover:scale-110" />
                 </Link>
               ))}
             </div>
