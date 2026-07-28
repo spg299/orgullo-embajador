@@ -13,13 +13,11 @@ export default function OrderSummary({
   match,
   selections,
   subtotal,
-  serviceFee,
   total,
 }: {
   match: Match;
   selections: Selection[];
   subtotal: number;
-  serviceFee: number;
   total: number;
 }) {
   return (
@@ -99,10 +97,6 @@ export default function OrderSummary({
           <div className="flex items-center justify-between text-navy-700/70">
             <span>Subtotal</span>
             <span>{formatCOP(subtotal)}</span>
-          </div>
-          <div className="flex items-center justify-between text-navy-700/70">
-            <span>Costo de servicio</span>
-            <span>{formatCOP(serviceFee)}</span>
           </div>
           <div className="flex items-center justify-between border-t border-dashed border-navy-900/10 pt-3 text-base font-bold tracking-tight text-navy-950">
             <span>Total</span>

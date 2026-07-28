@@ -14,8 +14,6 @@ import { CalendarIcon, MapPinIcon } from "@/components/ui/Icons";
 import { tiers, fetchTiers } from "@/data/tiers";
 import type { Match } from "@/data/matches";
 
-const SERVICE_FEE_RATE = 0.08;
-
 export default function PurchaseFlow({ match }: { match: Match }) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
@@ -51,8 +49,7 @@ export default function PurchaseFlow({ match }: { match: Match }) {
     (sum, { tier, quantity }) => sum + tier.price * quantity,
     0,
   );
-  const serviceFee = Math.round(subtotal * SERVICE_FEE_RATE);
-  const total = subtotal + serviceFee;
+  const total = subtotal;
   const hasSelection = selections.length > 0;
 
   return (
@@ -150,7 +147,6 @@ export default function PurchaseFlow({ match }: { match: Match }) {
               match={match}
               selections={selections}
               subtotal={subtotal}
-              serviceFee={serviceFee}
               total={total}
             />
             <WhatsAppCheckoutBox
