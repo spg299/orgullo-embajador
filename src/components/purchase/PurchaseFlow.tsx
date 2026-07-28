@@ -6,7 +6,6 @@ import Container from "@/components/ui/Container";
 import CrestBadge from "@/components/ui/CrestBadge";
 import ProgressSteps from "@/components/purchase/ProgressSteps";
 import TierRow from "@/components/purchase/TierRow";
-import DiscountCodeField from "@/components/purchase/DiscountCodeField";
 import PurchaseForm from "@/components/purchase/PurchaseForm";
 import OrderSummary from "@/components/purchase/OrderSummary";
 import WhatsAppCheckoutBox from "@/components/purchase/WhatsAppCheckoutBox";
@@ -132,10 +131,6 @@ export default function PurchaseFlow({ match }: { match: Match }) {
                     }
                   />
                 ))}
-              </div>
-
-              <div className="mt-6">
-                <DiscountCodeField />
               </div>
             </div>
 
