@@ -19,6 +19,7 @@ const palettes: Record<string, { from: string; to: string; text: string }> = {
   DP: { from: "#9f1239", to: "#4c0519", text: "#ffffff" },
   IB: { from: "#6366f1", to: "#312e81", text: "#ffffff" },
   JG: { from: "#65a30d", to: "#1a2e05", text: "#ffffff" },
+  AF: { from: "#dc2626", to: "#1d4ed8", text: "#ffffff" },
 };
 
 // Responsive so a pair of crests always lands in the 40-48px (desktop) /
