@@ -5,7 +5,7 @@ import Container from "@/components/ui/Container";
 import CrestBadge from "@/components/ui/CrestBadge";
 import MatchCtaButton from "@/components/home/MatchCtaButton";
 import { CalendarIcon, MapPinIcon, ArrowRightIcon } from "@/components/ui/Icons";
-import { homeMatches, fetchHomeMatches, MILLONARIOS_CREST } from "@/data/homeMatches";
+import { homeMatches, fetchHomeMatches } from "@/data/homeMatches";
 import { heroVideos, fetchHeroVideos } from "@/data/heroVideos";
 import { siteSettings as defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
 
@@ -138,13 +138,15 @@ export default function Hero() {
     pauseThenResume();
   }
 
-  // Only two <video> elements ever exist in the DOM: the one on screen and the
-  // one preloading the next clip. They swap roles each tick so the crossfade
-  // never has more than two full-bleed videos decoding at once.
+  // Only two background layers ever exist in the DOM: the one on screen and
+  // the one preloading the next clip. They swap roles each tick so the
+  // crossfade never has more than two full-bleed videos decoding at once.
+  // Each layer can be a video or a static image (admin can mix both from
+  // /admin/hero — type is inferred from the file extension).
   const activeLayer = tick % 2;
-  const activeSrc = videos[tick % videos.length];
-  const nextSrc = videos[(tick + 1) % videos.length];
-  const layerSrcs = activeLayer === 0 ? [activeSrc, nextSrc] : [nextSrc, activeSrc];
+  const activeMedia = videos[tick % videos.length];
+  const nextMedia = videos[(tick + 1) % videos.length];
+  const layerMedia = activeLayer === 0 ? [activeMedia, nextMedia] : [nextMedia, activeMedia];
 
   const dragPercent = isDragging ? (dragX / viewportWidthPx) * 100 : 0;
 
@@ -157,22 +159,29 @@ export default function Hero() {
   return (
     <section id="inicio" className="relative overflow-hidden bg-navy-950">
       <div className="absolute inset-0">
-        {[0, 1].map((layer) => (
-          <video
-            key={layer}
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ease-in-out ${
-              layer === activeLayer ? "opacity-100" : "opacity-0"
-            }`}
-            src={layerSrcs[layer]}
-            poster="/images/gallery-tifo.webp"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            aria-hidden="true"
-          />
-        ))}
+        {[0, 1].map((layer) => {
+          const media = layerMedia[layer];
+          const layerClass = `absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ease-in-out ${
+            layer === activeLayer ? "opacity-100" : "opacity-0"
+          }`;
+          return media.type === "image" ? (
+            // eslint-disable-next-line @next/next/no-img-element -- admin-supplied URLs vary in host/size; next/image adds no real benefit here
+            <img key={layer} className={layerClass} src={media.url} alt="" aria-hidden="true" />
+          ) : (
+            <video
+              key={layer}
+              className={layerClass}
+              src={media.url}
+              poster="/images/gallery-tifo.webp"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              aria-hidden="true"
+            />
+          );
+        })}
         <div className="absolute inset-0 bg-navy-950/65" />
       </div>
 
@@ -222,7 +231,7 @@ export default function Hero() {
                       <CrestBadge
                         initial="M"
                         size="md"
-                        crestSrc={MILLONARIOS_CREST}
+                        crestSrc={content.millonarios_crest_url}
                         alt="Escudo de Millonarios FC"
                       />
                       <CrestBadge

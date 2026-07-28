@@ -8,10 +8,10 @@ import { CalendarIcon, ClockIcon, MapPinIcon } from "@/components/ui/Icons";
 import {
   homeMatches,
   fetchHomeMatches,
-  MILLONARIOS_CREST,
   type HomeMatch,
   type MatchStatus,
 } from "@/data/homeMatches";
+import { siteSettings as defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
 
 const statusConfig: Record<MatchStatus, { label: string; className: string }> = {
   sold_out: {
@@ -40,7 +40,15 @@ function StatusBadge({ status }: { status: MatchStatus }) {
   );
 }
 
-function MatchCalendarCard({ match, delayMs }: { match: HomeMatch; delayMs: number }) {
+function MatchCalendarCard({
+  match,
+  delayMs,
+  millonariosCrest,
+}: {
+  match: HomeMatch;
+  delayMs: number;
+  millonariosCrest: string;
+}) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [inView, setInView] = useState(false);
 
@@ -68,12 +76,21 @@ function MatchCalendarCard({ match, delayMs }: { match: HomeMatch; delayMs: numb
       }`}
       style={{ transitionDelay: `${delayMs}ms` }}
     >
+      {match.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element -- admin-supplied URLs vary in host/size; next/image adds no real benefit here
+        <img
+          src={match.imageUrl}
+          alt={`Millonarios vs ${match.rival}`}
+          className="-mx-6 -mt-6 mb-5 aspect-video w-[calc(100%+3rem)] rounded-t-3xl object-cover"
+        />
+      )}
+
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center -space-x-3">
           <CrestBadge
             initial="M"
             size="sm"
-            crestSrc={MILLONARIOS_CREST}
+            crestSrc={millonariosCrest}
             alt="Escudo de Millonarios FC"
           />
           <CrestBadge
@@ -89,6 +106,12 @@ function MatchCalendarCard({ match, delayMs }: { match: HomeMatch; delayMs: numb
       <p className="mt-4 font-display text-lg font-bold tracking-tight text-white">
         Millonarios <span className="text-white/40">vs</span> {match.rival}
       </p>
+
+      {match.description && (
+        <p className="mt-2 text-sm font-medium leading-relaxed text-white/60">
+          {match.description}
+        </p>
+      )}
 
       <div className="mt-3 space-y-1.5 text-sm font-medium text-white/60">
         <p className="flex items-center gap-1.5">
@@ -120,9 +143,11 @@ export default function HomeMatchesCalendar() {
   // Seeded with the static fallback for an identical first paint; upgraded
   // silently to the live /admin/matches data once the fetch resolves.
   const [matches, setMatches] = useState(homeMatches);
+  const [settings, setSettings] = useState(defaultSiteSettings);
 
   useEffect(() => {
     fetchHomeMatches().then(setMatches);
+    fetchSiteSettings().then(setSettings);
   }, []);
 
   return (
@@ -146,7 +171,12 @@ export default function HomeMatchesCalendar() {
 
         <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {matches.map((match, i) => (
-            <MatchCalendarCard key={match.id} match={match} delayMs={(i % 3) * 120} />
+            <MatchCalendarCard
+              key={match.id}
+              match={match}
+              delayMs={(i % 3) * 120}
+              millonariosCrest={settings.millonarios_crest_url}
+            />
           ))}
         </div>
       </Container>

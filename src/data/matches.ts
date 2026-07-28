@@ -1,4 +1,5 @@
-import { homeMatches, fetchHomeMatchById, MILLONARIOS_CREST, type HomeMatch } from "./homeMatches";
+import { homeMatches, fetchHomeMatchById, type HomeMatch } from "./homeMatches";
+import { fetchSiteSettings } from "./siteSettings";
 
 export interface Match {
   id: string;
@@ -25,14 +26,14 @@ export interface Match {
 // fixture — Hero, the calendar, and checkout (via getMatchById below) all
 // read from it, so editing a match in the admin panel updates every view
 // with no other code changes.
-function toMatch(homeMatch: HomeMatch): Match {
+function toMatch(homeMatch: HomeMatch, millonariosCrest: string): Match {
   return {
     id: homeMatch.id,
     home: "Millonarios",
     away: homeMatch.rival,
     homeInitial: "M",
     awayInitial: homeMatch.rivalInitial,
-    homeCrest: MILLONARIOS_CREST,
+    homeCrest: millonariosCrest,
     awayCrest: homeMatch.rivalCrest,
     competition: "Liga BetPlay Dimayor",
     date: homeMatch.date,
@@ -46,11 +47,13 @@ function toMatch(homeMatch: HomeMatch): Match {
 }
 
 export async function getMatchById(id: string | undefined): Promise<Match> {
+  const settings = await fetchSiteSettings();
+
   if (id) {
     const fromDb = await fetchHomeMatchById(id);
-    if (fromDb) return toMatch(fromDb);
+    if (fromDb) return toMatch(fromDb, settings.millonarios_crest_url);
   }
 
   const fallback = homeMatches.find((match) => match.id === id) ?? homeMatches[0];
-  return toMatch(fallback);
+  return toMatch(fallback, settings.millonarios_crest_url);
 }

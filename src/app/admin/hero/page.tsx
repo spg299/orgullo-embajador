@@ -172,8 +172,8 @@ export default function AdminHeroPage() {
     <div className="mx-auto max-w-3xl">
       <h1 className="font-display text-2xl font-extrabold tracking-tight text-navy-950">Hero</h1>
       <p className="mt-1 text-sm font-medium text-navy-700/60">
-        Administra los videos de fondo, el texto y el botón del Hero, y qué partidos aparecen en
-        el carrusel.
+        Administra los videos e imágenes de fondo, el texto y el botón del Hero, y qué partidos
+        aparecen en el carrusel.
       </p>
 
       {/* Texto y botón */}
@@ -224,7 +224,7 @@ export default function AdminHeroPage() {
       <div className="mt-8">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-bold tracking-tight text-navy-950">
-            Videos de fondo
+            Videos e imágenes de fondo
           </h2>
           <Button
             variant="primary"
@@ -355,7 +355,7 @@ export default function AdminHeroPage() {
             <form className="mt-6 flex flex-col gap-4" onSubmit={handleVideoSubmit}>
               <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium text-navy-900/80">
-                  URL del video (ej. /videos/mi-video.mp4)
+                  URL del video o imagen (ej. /videos/mi-video.mp4 o https://.../foto.jpg)
                 </span>
                 <input
                   required

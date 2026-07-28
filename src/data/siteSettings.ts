@@ -10,6 +10,8 @@ export interface SiteSettings {
   hero_headline: string;
   hero_subtext: string;
   hero_button_label: string;
+  site_logo_url: string;
+  millonarios_crest_url: string;
 }
 
 // Static fallback — identical to what's already hardcoded across the site
@@ -27,6 +29,8 @@ export const siteSettings: SiteSettings = {
   hero_subtext:
     "Vive la pasión azul junto a Millonarios. Consigue tu puesto en El Campín en minutos.",
   hero_button_label: "Comprar ahora",
+  site_logo_url: "/images/logo-orgullo-embajador.png",
+  millonarios_crest_url: "/images/crests/millonarios.png",
 };
 
 interface SettingRow {

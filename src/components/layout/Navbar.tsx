@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import AuthModal from "@/components/auth/AuthModal";
 import { CloseIcon, MenuIcon, WhatsAppIcon } from "@/components/ui/Icons";
+import { siteSettings as defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
 
 const links = [
   { href: "/#inicio", label: "Inicio" },
@@ -33,7 +34,12 @@ function mobileItemStyle(open: boolean, index: number, total: number): CSSProper
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [logoUrl, setLogoUrl] = useState(defaultSiteSettings.site_logo_url);
   const { user, loading, isAdmin } = useAuth();
+
+  useEffect(() => {
+    fetchSiteSettings().then((settings) => setLogoUrl(settings.site_logo_url));
+  }, []);
 
   const navLinks = isAdmin ? [...links, ADMIN_LINK] : links;
   const mobileItemCount = navLinks.length + 2;
@@ -46,7 +52,7 @@ export default function Navbar() {
         <Container className="flex h-20 items-center justify-between">
           <Link href="/" className="group flex items-center gap-2.5">
             <img
-              src="/images/logo-orgullo-embajador.png"
+              src={logoUrl}
               alt="Orgullo Embajador"
               width={112}
               height={112}

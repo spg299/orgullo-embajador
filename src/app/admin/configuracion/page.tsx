@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { supabase } from "@/lib/supabase/client";
 import Button from "@/components/ui/Button";
+import { UploadIcon } from "@/components/ui/Icons";
 import { siteSettings as defaultSiteSettings, type SiteSettings } from "@/data/siteSettings";
 
 const FIELDS: { key: keyof SiteSettings; label: string; hint?: string }[] = [
@@ -14,12 +15,20 @@ const FIELDS: { key: keyof SiteSettings; label: string; hint?: string }[] = [
   { key: "copyright_text", label: "Texto de derechos de autor" },
 ];
 
+const LOGO_FIELDS: { key: "site_logo_url" | "millonarios_crest_url"; label: string; folder: "site" | "millonarios" }[] = [
+  { key: "site_logo_url", label: "Logo de Orgullo Embajador", folder: "site" },
+  { key: "millonarios_crest_url", label: "Escudo de Millonarios FC", folder: "millonarios" },
+];
+
 export default function AdminConfiguracionPage() {
   const [settings, setSettings] = useState<SiteSettings>(defaultSiteSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingUpload = useRef<(typeof LOGO_FIELDS)[number] | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -35,6 +44,30 @@ export default function AdminConfiguracionPage() {
     }
     load();
   }, []);
+
+  async function handleLogoUpload(file: File) {
+    const field = pendingUpload.current;
+    if (!field) return;
+    setUploadingKey(field.key);
+    setError(null);
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    const formData = new FormData();
+    formData.append("accessToken", accessToken ?? "");
+    formData.append("folder", field.folder);
+    formData.append("file", file);
+
+    const res = await fetch("/api/admin/logos/upload", { method: "POST", body: formData });
+    const body = await res.json().catch(() => ({}));
+    setUploadingKey(null);
+
+    if (res.ok) {
+      setSettings((prev) => ({ ...prev, [field.key]: body.url }));
+    } else {
+      setError(body.error ?? "No se pudo subir la imagen.");
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -71,11 +104,55 @@ export default function AdminConfiguracionPage() {
         checkout).
       </p>
 
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleLogoUpload(file);
+          e.target.value = "";
+        }}
+      />
+
       <div className="mt-6 rounded-3xl border border-navy-900/8 bg-white p-6 shadow-card sm:p-8">
         {loading ? (
           <p className="text-sm font-medium text-navy-700/60">Cargando...</p>
         ) : (
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+          <div className="flex flex-col gap-4 border-b border-navy-900/8 pb-6">
+            {LOGO_FIELDS.map((field) => (
+              <div key={field.key} className="flex items-center gap-4">
+                {/* eslint-disable-next-line @next/next/no-img-element -- admin-supplied URLs vary in host/size; next/image adds no real benefit here */}
+                <img
+                  src={settings[field.key]}
+                  alt={field.label}
+                  className="h-14 w-14 rounded-xl border border-navy-900/8 object-contain"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-navy-900/80">{field.label}</p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="mt-1.5"
+                    icon={<UploadIcon className="h-4 w-4" />}
+                    disabled={uploadingKey === field.key}
+                    onClick={() => {
+                      pendingUpload.current = field;
+                      fileInputRef.current?.click();
+                    }}
+                  >
+                    {uploadingKey === field.key ? "Subiendo..." : "Subir imagen"}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {loading ? null : (
+          <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
             {FIELDS.map((field) => (
               <label key={field.key} className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium text-navy-900/80">{field.label}</span>
