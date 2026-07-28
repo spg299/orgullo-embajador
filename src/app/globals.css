@@ -1,8 +1,30 @@
 @import "tailwindcss";
 
+/* Dark mode is scoped to the admin panel only — the data-admin-theme
+   attribute is set on a wrapper div inside admin/layout.tsx, never on
+   <html>/<body>, so this never affects the public site. */
+@custom-variant dark (&:where([data-admin-theme="dark"], [data-admin-theme="dark"] *));
+
 :root {
   --background: #ffffff;
   --foreground: #0a1230;
+
+  /* Admin-only semantic surface tokens (light/default) */
+  --admin-bg: #f6f7fb;
+  --admin-surface: #ffffff;
+  --admin-surface-raised: #ffffff;
+  --admin-border: rgb(10 15 36 / 0.08);
+  --admin-text: #0a1230;
+  --admin-text-muted: rgb(19 30 69 / 0.62);
+}
+
+[data-admin-theme="dark"] {
+  --admin-bg: #0a0f1a;
+  --admin-surface: #131a2e;
+  --admin-surface-raised: #182036;
+  --admin-border: rgb(255 255 255 / 0.08);
+  --admin-text: #f3f5fb;
+  --admin-text-muted: rgb(255 255 255 / 0.6);
 }
 
 html {
@@ -51,6 +73,22 @@ html {
 
   --shadow-soft: 0 8px 30px -8px rgb(10 15 36 / 0.15);
   --shadow-card: 0 4px 24px -4px rgb(10 15 36 / 0.08);
+  --shadow-admin-xs: 0 1px 2px 0 rgb(10 15 36 / 0.04), 0 1px 3px -1px rgb(10 15 36 / 0.06);
+
+  /* Admin-only surface tokens — see :root / [data-admin-theme="dark"] above */
+  --color-admin-bg: var(--admin-bg);
+  --color-admin-surface: var(--admin-surface);
+  --color-admin-surface-raised: var(--admin-surface-raised);
+  --color-admin-border: var(--admin-border);
+  --color-admin-text: var(--admin-text);
+  --color-admin-text-muted: var(--admin-text-muted);
+
+  /* Admin-only radius scale (14-18px range), additive — never overrides the
+     default Tailwind scale the public site uses. */
+  --radius-admin-sm: 10px;
+  --radius-admin-md: 14px;
+  --radius-admin-lg: 16px;
+  --radius-admin-xl: 18px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -103,4 +141,24 @@ body {
 
 .animate-soft-pulse {
   animation: soft-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes admin-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-admin-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--admin-border) 25%,
+    color-mix(in srgb, var(--admin-border) 50%, transparent) 50%,
+    var(--admin-border) 75%
+  );
+  background-size: 200% 100%;
+  animation: admin-shimmer 1.6s ease-in-out infinite;
 }
