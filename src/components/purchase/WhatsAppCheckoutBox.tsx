@@ -1,13 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import Button from "@/components/ui/Button";
 import { CheckIcon, WhatsAppIcon } from "@/components/ui/Icons";
 import { formatCOP } from "@/lib/format";
+import { siteSettings as defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
 import type { Match } from "@/data/matches";
 import type { Tier } from "@/data/tiers";
-
-const WHATSAPP_NUMBER = "573186319954";
 
 const checklist = [
   "Confirmaremos el pedido",
@@ -36,6 +36,11 @@ export default function WhatsAppCheckoutBox({
   onFinalize: () => void;
 }) {
   const { user } = useAuth();
+  const [whatsappNumber, setWhatsappNumber] = useState(defaultSiteSettings.whatsapp_number);
+
+  useEffect(() => {
+    fetchSiteSettings().then((settings) => setWhatsappNumber(settings.whatsapp_number));
+  }, []);
 
   function handleFinalize() {
     const totalQuantity = selections.reduce((sum, s) => sum + s.quantity, 0);
@@ -61,7 +66,7 @@ export default function WhatsAppCheckoutBox({
       if (buyerEmail) lines.push(`Correo: ${buyerEmail}`);
     }
 
-    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(lines.join("\n"))}`;
+    const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(lines.join("\n"))}`;
     window.open(url, "_blank", "noopener,noreferrer");
     onFinalize();
   }

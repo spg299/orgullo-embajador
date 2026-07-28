@@ -1,3 +1,5 @@
+import { supabase } from "@/lib/supabase/client";
+
 export interface Tier {
   id: string;
   name: string;
@@ -7,6 +9,9 @@ export interface Tier {
   availability: "alta" | "media" | "baja";
 }
 
+// Static fallback — used until fetchTiers() resolves, and if the tiers
+// table doesn't exist yet or the request fails for any reason. Managed live
+// from /admin/precios once the migration has run.
 export const tiers: Tier[] = [
   {
     id: "occidental-baja",
@@ -55,3 +60,25 @@ export const availabilityLabels: Record<Tier["availability"], string> = {
   media: "Disponibilidad media",
   baja: "Últimas boletas",
 };
+
+interface TierRow {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  price: number;
+  availability: Tier["availability"];
+}
+
+// Fetches the live tier list from Supabase (managed from /admin/precios).
+// Falls back to the static array above — unchanged, so nothing regresses —
+// if the table doesn't exist yet (migration not run) or the request fails.
+export async function fetchTiers(): Promise<Tier[]> {
+  const { data, error } = await supabase
+    .from("tiers")
+    .select("id, name, description, color, price, availability")
+    .order("sort_order");
+
+  if (error || !data || data.length === 0) return tiers;
+  return data as TierRow[];
+}

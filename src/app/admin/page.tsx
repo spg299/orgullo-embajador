@@ -3,22 +3,15 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
-import {
-  CalendarIcon,
-  MailIcon,
-  PhotoIcon,
-  TicketIcon,
-  UsersIcon,
-  VideoIcon,
-} from "@/components/ui/Icons";
 
 const cards = [
-  { href: "/admin/matches", label: "Partidos", icon: TicketIcon, table: "matches" },
-  { href: "/admin/hero", label: "En el Hero", icon: CalendarIcon, table: null },
-  { href: "/admin/testimonials", label: "Testimonios", icon: PhotoIcon, table: "testimonials" },
-  { href: "/admin/videos", label: "Videos del Hero", icon: VideoIcon, table: "hero_videos" },
-  { href: "/admin/users", label: "Usuarios", icon: UsersIcon, table: "profiles" },
-  { href: "/admin/newsletter", label: "Newsletter", icon: MailIcon, table: "profiles" },
+  { href: "/admin/matches", label: "Partidos", emoji: "⚽", table: "matches" },
+  { href: "/admin/precios", label: "Precios", emoji: "💰", table: "tiers" },
+  { href: "/admin/logos", label: "Logos", emoji: "🖼", table: null },
+  { href: "/admin/hero", label: "Hero", emoji: "🎥", table: "hero_videos" },
+  { href: "/admin/testimonials", label: "Testimonios", emoji: "⭐", table: "testimonials" },
+  { href: "/admin/users", label: "Usuarios", emoji: "👥", table: "profiles" },
+  { href: "/admin/configuracion", label: "Configuración", emoji: "⚙️", table: null },
 ] as const;
 
 export default function AdminDashboardPage() {
@@ -27,7 +20,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     let cancelled = false;
     async function loadCounts() {
-      const tables = ["matches", "testimonials", "hero_videos", "profiles"] as const;
+      const tables = ["matches", "tiers", "testimonials", "hero_videos", "profiles"] as const;
       const results = await Promise.all(
         tables.map((table) =>
           supabase
@@ -47,11 +40,11 @@ export default function AdminDashboardPage() {
   return (
     <div className="mx-auto max-w-5xl">
       <h1 className="font-display text-2xl font-extrabold tracking-tight text-navy-950">
-        Resumen
+        Dashboard
       </h1>
       <p className="mt-1 text-sm font-medium text-navy-700/60">
-        Administra los partidos, el Hero, los testimonios, los videos, los usuarios y la lista de
-        correo desde aquí — sin tocar código.
+        Administra los partidos, precios, logos, el Hero, los testimonios, los usuarios y la
+        configuración del sitio desde aquí — sin tocar código.
       </p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -61,8 +54,8 @@ export default function AdminDashboardPage() {
             href={card.href}
             className="group flex flex-col gap-3 rounded-3xl border border-navy-900/8 bg-white p-6 shadow-card transition-all hover:-translate-y-1 hover:shadow-soft"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-royal-500 to-navy-900 text-white">
-              <card.icon className="h-5 w-5" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-royal-500 to-navy-900 text-lg text-white">
+              <span aria-hidden="true">{card.emoji}</span>
             </div>
             <div>
               <p className="font-display text-lg font-bold tracking-tight text-navy-950">

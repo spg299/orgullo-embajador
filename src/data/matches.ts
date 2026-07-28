@@ -16,6 +16,8 @@ export interface Match {
   city: string;
   /** Optional per-match price override, keyed by tier id (data/tiers.ts). */
   tierPrices?: Record<string, number> | null;
+  description?: string;
+  imageUrl?: string;
 }
 
 // homeMatches (data/homeMatches.ts, backed by the Supabase "matches" table
@@ -38,6 +40,8 @@ function toMatch(homeMatch: HomeMatch): Match {
     stadium: homeMatch.stadium,
     city: "Bogotá D.C.",
     tierPrices: homeMatch.tierPrices,
+    description: homeMatch.description,
+    imageUrl: homeMatch.imageUrl,
   };
 }
 

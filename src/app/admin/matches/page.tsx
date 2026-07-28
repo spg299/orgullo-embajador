@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { supabase } from "@/lib/supabase/client";
 import Button from "@/components/ui/Button";
-import { PencilIcon, TrashIcon } from "@/components/ui/Icons";
-import { tiers } from "@/data/tiers";
+import { PencilIcon, TrashIcon, UploadIcon } from "@/components/ui/Icons";
+import { tiers as staticTiers, fetchTiers } from "@/data/tiers";
 
 type MatchStatus = "available" | "upcoming" | "sold_out";
 
@@ -21,6 +21,8 @@ interface MatchRow {
   show_in_hero: boolean;
   tier_prices: Record<string, number> | null;
   sort_order: number;
+  description: string | null;
+  image_url: string | null;
 }
 
 const emptyMatch: MatchRow = {
@@ -36,6 +38,8 @@ const emptyMatch: MatchRow = {
   show_in_hero: true,
   tier_prices: null,
   sort_order: 0,
+  description: "",
+  image_url: "",
 };
 
 const statusLabels: Record<MatchStatus, string> = {
@@ -50,11 +54,43 @@ export default function AdminMatchesPage() {
   const [isNew, setIsNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadingCrest, setUploadingCrest] = useState(false);
+  const [tiers, setTiers] = useState(staticTiers);
+  const crestInputRef = useRef<HTMLInputElement>(null);
   const loading = matches === null;
+
+  useEffect(() => {
+    fetchTiers().then(setTiers);
+  }, []);
 
   async function fetchMatches(): Promise<MatchRow[]> {
     const { data, error } = await supabase.from("matches").select("*").order("sort_order");
     return error ? [] : ((data as MatchRow[]) ?? []);
+  }
+
+  async function getAccessToken() {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token;
+  }
+
+  async function handleCrestUpload(file: File) {
+    setUploadingCrest(true);
+    setError(null);
+    const accessToken = await getAccessToken();
+    const formData = new FormData();
+    formData.append("accessToken", accessToken ?? "");
+    formData.append("folder", "rivales");
+    formData.append("file", file);
+
+    const res = await fetch("/api/admin/logos/upload", { method: "POST", body: formData });
+    const body = await res.json().catch(() => ({}));
+    setUploadingCrest(false);
+
+    if (res.ok) {
+      setEditing((prev) => (prev ? { ...prev, rival_crest: body.url } : prev));
+    } else {
+      setError(body.error ?? "No se pudo subir el escudo.");
+    }
   }
 
   useEffect(() => {
@@ -231,11 +267,58 @@ export default function AdminMatchesPage() {
               </div>
 
               <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-navy-900/80">Escudo (URL)</span>
+                <span className="text-sm font-medium text-navy-900/80">Escudo del rival</span>
+                <div className="flex gap-2">
+                  <input
+                    value={editing.rival_crest ?? ""}
+                    onChange={(e) => setEditing({ ...editing, rival_crest: e.target.value })}
+                    placeholder="/images/crests/rival.png"
+                    className="flex-1 rounded-xl border border-navy-900/12 px-4 py-2.5 text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    icon={<UploadIcon className="h-4 w-4" />}
+                    disabled={uploadingCrest}
+                    onClick={() => crestInputRef.current?.click()}
+                  >
+                    {uploadingCrest ? "Subiendo..." : "Subir"}
+                  </Button>
+                  <input
+                    ref={crestInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleCrestUpload(file);
+                    }}
+                  />
+                </div>
+              </label>
+
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-navy-900/80">
+                  Descripción (opcional)
+                </span>
+                <textarea
+                  rows={3}
+                  value={editing.description ?? ""}
+                  onChange={(e) => setEditing({ ...editing, description: e.target.value })}
+                  placeholder="Texto editorial sobre el partido, si quieres agregar contexto."
+                  className="rounded-xl border border-navy-900/12 px-4 py-2.5 text-sm"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-navy-900/80">
+                  Imagen del partido (URL, opcional)
+                </span>
                 <input
-                  value={editing.rival_crest ?? ""}
-                  onChange={(e) => setEditing({ ...editing, rival_crest: e.target.value })}
-                  placeholder="/images/crests/rival.png"
+                  value={editing.image_url ?? ""}
+                  onChange={(e) => setEditing({ ...editing, image_url: e.target.value })}
+                  placeholder="https://..."
                   className="rounded-xl border border-navy-900/12 px-4 py-2.5 text-sm"
                 />
               </label>

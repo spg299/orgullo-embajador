@@ -7,6 +7,7 @@ import MatchCtaButton from "@/components/home/MatchCtaButton";
 import { CalendarIcon, MapPinIcon, ArrowRightIcon } from "@/components/ui/Icons";
 import { homeMatches, fetchHomeMatches, MILLONARIOS_CREST } from "@/data/homeMatches";
 import { heroVideos, fetchHeroVideos } from "@/data/heroVideos";
+import { siteSettings as defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
 
 const AUTOPLAY_MS = 5000;
 const RESUME_DELAY_MS = 6000;
@@ -32,10 +33,12 @@ export default function Hero() {
 
   const [tick, setTick] = useState(0);
   const [videos, setVideos] = useState(heroVideos);
+  const [content, setContent] = useState(defaultSiteSettings);
 
   useEffect(() => {
     fetchHomeMatches().then(setMatchesData);
     fetchHeroVideos().then(setVideos);
+    fetchSiteSettings().then(setContent);
   }, []);
 
   // Same source of truth as the "Calendario de partidos de local" section:
@@ -145,6 +148,12 @@ export default function Hero() {
 
   const dragPercent = isDragging ? (dragX / viewportWidthPx) * 100 : 0;
 
+  // Keeps the two-tone headline treatment (white lead line, gold last word)
+  // while the text itself becomes editable from /admin/hero.
+  const headlineWords = content.hero_headline.trim().split(/\s+/);
+  const headlineHighlight = headlineWords.at(-1) ?? "";
+  const headlineLead = headlineWords.slice(0, -1).join(" ");
+
   return (
     <section id="inicio" className="relative overflow-hidden bg-navy-950">
       <div className="absolute inset-0">
@@ -174,14 +183,13 @@ export default function Hero() {
           </span>
 
           <h1 className="mt-6 font-display text-5xl font-black leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">
-            Compra tus
+            {headlineLead}
             <br />
-            <span className="text-gold-400">boletas</span>
+            <span className="text-gold-400">{headlineHighlight}</span>
           </h1>
 
           <p className="mt-6 max-w-md text-lg font-medium leading-relaxed text-white/70">
-            Vive la pasión azul junto a Millonarios. Consigue tu puesto en El
-            Campín en minutos.
+            {content.hero_subtext}
           </p>
 
           <div
@@ -253,6 +261,7 @@ export default function Hero() {
                       size="lg"
                       icon={<ArrowRightIcon className="h-4 w-4" />}
                       className="w-full sm:w-auto"
+                      availableLabel={content.hero_button_label}
                     />
                   </div>
                 </div>

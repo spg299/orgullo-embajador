@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Container from "@/components/ui/Container";
 import CrestBadge from "@/components/ui/CrestBadge";
@@ -11,7 +11,7 @@ import PurchaseForm from "@/components/purchase/PurchaseForm";
 import OrderSummary from "@/components/purchase/OrderSummary";
 import WhatsAppCheckoutBox from "@/components/purchase/WhatsAppCheckoutBox";
 import { CalendarIcon, MapPinIcon } from "@/components/ui/Icons";
-import { tiers } from "@/data/tiers";
+import { tiers, fetchTiers } from "@/data/tiers";
 import type { Match } from "@/data/matches";
 
 const SERVICE_FEE_RATE = 0.08;
@@ -19,17 +19,24 @@ const SERVICE_FEE_RATE = 0.08;
 export default function PurchaseFlow({ match }: { match: Match }) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
+  // Seeded with the static fallback for an identical first paint; upgraded
+  // silently to the live /admin/precios data once the fetch resolves.
+  const [baseTiers, setBaseTiers] = useState(tiers);
+
+  useEffect(() => {
+    fetchTiers().then(setBaseTiers);
+  }, []);
 
   // Per-match price overrides set from /admin/matches take priority over the
-  // general prices in data/tiers.ts; any tier without an override just keeps
-  // its default price.
+  // general prices from /admin/precios; any tier without an override just
+  // keeps its default price.
   const effectiveTiers = useMemo(
     () =>
-      tiers.map((tier) => ({
+      baseTiers.map((tier) => ({
         ...tier,
         price: match.tierPrices?.[tier.id] ?? tier.price,
       })),
-    [match.tierPrices],
+    [baseTiers, match.tierPrices],
   );
 
   const selections = useMemo(

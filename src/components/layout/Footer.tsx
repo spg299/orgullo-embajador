@@ -1,49 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import type { MouseEvent } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import Container from "@/components/ui/Container";
 import { HomeIcon, InstagramIcon, LinkedInIcon } from "@/components/ui/Icons";
+import { siteSettings as defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
 
-const columns = [
-  {
-    title: "Ayuda",
-    links: [
-      { label: "Preguntas frecuentes", href: "#" },
-      { label: "Cómo comprar", href: "/#como-comprar" },
-      { label: "Política de cambios", href: "#" },
-      { label: "Términos y condiciones", href: "#" },
-    ],
-  },
-  {
-    title: "Contacto",
-    links: [
-      { label: "WhatsApp: +57 318 631 9954", href: "#" },
-      { label: "Soporte: +57 318 631 9954", href: "#" },
-      { label: "Bogotá D.C., Colombia", href: "#" },
-    ],
-  },
-];
-
-const socials = [
-  {
-    label: "LinkedIn",
-    href: "https://www.linkedin.com/in/santiago-perdomo-gonzalez-68b4663b6/?locale=en",
-    icon: LinkedInIcon,
-    external: true,
-  },
-  {
-    label: "Instagram",
-    href: "https://www.instagram.com/orgullo.embajador/?hl=es",
-    icon: InstagramIcon,
-    external: true,
-  },
-  {
-    label: "Inicio",
-    href: "/#inicio",
-    icon: HomeIcon,
-    external: false,
-  },
+const helpLinks = [
+  { label: "Preguntas frecuentes", href: "#" },
+  { label: "Cómo comprar", href: "/#como-comprar" },
+  { label: "Política de cambios", href: "#" },
+  { label: "Términos y condiciones", href: "#" },
 ];
 
 function scrollToTop(e: MouseEvent<HTMLAnchorElement>) {
@@ -54,6 +21,45 @@ function scrollToTop(e: MouseEvent<HTMLAnchorElement>) {
 }
 
 export default function Footer() {
+  const [settings, setSettings] = useState(defaultSiteSettings);
+
+  useEffect(() => {
+    fetchSiteSettings().then(setSettings);
+  }, []);
+
+  const socials = [
+    {
+      label: "LinkedIn",
+      href: settings.linkedin_url,
+      icon: LinkedInIcon,
+      external: true,
+    },
+    {
+      label: "Instagram",
+      href: settings.instagram_url,
+      icon: InstagramIcon,
+      external: true,
+    },
+    {
+      label: "Inicio",
+      href: "/#inicio",
+      icon: HomeIcon,
+      external: false,
+    },
+  ];
+
+  const columns = [
+    { title: "Ayuda", links: helpLinks },
+    {
+      title: "Contacto",
+      links: [
+        { label: `WhatsApp: ${settings.whatsapp_support_label}`, href: "#" },
+        { label: `Soporte: ${settings.whatsapp_support_label}`, href: "#" },
+        { label: settings.contact_address, href: "#" },
+      ],
+    },
+  ];
+
   return (
     <footer id="contacto" className="bg-navy-950 text-white/70">
       <Container className="py-16">
@@ -112,7 +118,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-14 flex flex-col items-center gap-3 border-t border-white/10 pt-8 text-center text-xs font-medium text-white/40">
-          <p>© 2026 Orgullo Embajador. Todos los derechos reservados.</p>
+          <p>{settings.copyright_text}</p>
 
           <p className="text-white/30">
             Desarrollado por{" "}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { TrashIcon } from "@/components/ui/Icons";
 
 interface UserRow {
   id: string;
@@ -65,6 +66,35 @@ export default function AdminUsersPage() {
     }
   }
 
+  async function handleDeleteUser(target: UserRow) {
+    if (target.id === user?.id) {
+      alert("No puedes eliminar tu propia cuenta.");
+      return;
+    }
+    if (
+      !confirm(
+        `¿Eliminar la cuenta de ${target.full_name || target.email}? Esta acción no se puede deshacer.`,
+      )
+    ) {
+      return;
+    }
+
+    const { data } = await supabase.auth.getSession();
+    const accessToken = data.session?.access_token;
+
+    const res = await fetch("/api/admin/users/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accessToken, userId: target.id }),
+    });
+
+    if (res.ok) fetchUsers().then(setResult);
+    else {
+      const body = await res.json().catch(() => ({}));
+      alert(body.error ?? "No se pudo eliminar el usuario.");
+    }
+  }
+
   return (
     <div className="mx-auto max-w-4xl">
       <h1 className="font-display text-2xl font-extrabold tracking-tight text-navy-950">
@@ -89,6 +119,7 @@ export default function AdminUsersPage() {
                 <th className="px-5 py-3">Correo</th>
                 <th className="px-5 py-3">Fecha</th>
                 <th className="px-5 py-3">Rol</th>
+                <th className="px-5 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-navy-900/5">
@@ -108,6 +139,16 @@ export default function AdminUsersPage() {
                       <option value="user">Usuario</option>
                       <option value="admin">Administrador</option>
                     </select>
+                  </td>
+                  <td className="px-5 py-3">
+                    <button
+                      type="button"
+                      aria-label="Eliminar usuario"
+                      onClick={() => handleDeleteUser(u)}
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-rose-600 hover:bg-rose-50"
+                    >
+                      <TrashIcon />
+                    </button>
                   </td>
                 </tr>
               ))}

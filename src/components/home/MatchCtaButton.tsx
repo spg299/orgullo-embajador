@@ -24,12 +24,15 @@ export default function MatchCtaButton({
   size = "md",
   icon,
   className = "",
+  availableLabel,
 }: {
   status: MatchStatus;
   href: string;
   size?: "sm" | "md" | "lg";
   icon?: ReactNode;
   className?: string;
+  /** Optional override for the "available" label, set from /admin/hero. */
+  availableLabel?: string;
 }) {
   if (status === "available") {
     return (
@@ -41,7 +44,7 @@ export default function MatchCtaButton({
         iconPosition="right"
         className={className}
       >
-        {CTA_LABEL[status]}
+        {availableLabel || CTA_LABEL[status]}
       </Button>
     );
   }

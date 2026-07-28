@@ -2,14 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { WhatsAppIcon } from "@/components/ui/Icons";
-
-const WHATSAPP_LINK =
-  "https://wa.me/573186319954?text=Hola%20Orgullo%20Embajador%2C%20quiero%20informaci%C3%B3n%20sobre%20las%20boletas.";
+import { siteSettings as defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
 
 const TOOLTIP_STORAGE_KEY = "oe-whatsapp-tooltip-seen";
 
 export default function WhatsAppFloatingButton() {
   const [showTooltip, setShowTooltip] = useState(false);
+  const [whatsappNumber, setWhatsappNumber] = useState(defaultSiteSettings.whatsapp_number);
+
+  useEffect(() => {
+    fetchSiteSettings().then((settings) => setWhatsappNumber(settings.whatsapp_number));
+  }, []);
+
+  const whatsappLink = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+    "Hola Orgullo Embajador, quiero información sobre las boletas.",
+  )}`;
 
   useEffect(() => {
     if (window.localStorage.getItem(TOOLTIP_STORAGE_KEY)) return;
@@ -48,7 +55,7 @@ export default function WhatsAppFloatingButton() {
       )}
 
       <a
-        href={WHATSAPP_LINK}
+        href={whatsappLink}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Escríbenos por WhatsApp"
