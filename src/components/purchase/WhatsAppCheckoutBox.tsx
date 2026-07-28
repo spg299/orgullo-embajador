@@ -1,5 +1,13 @@
+"use client";
+
+import { useAuth } from "@/contexts/AuthContext";
 import Button from "@/components/ui/Button";
 import { CheckIcon, WhatsAppIcon } from "@/components/ui/Icons";
+import { formatCOP } from "@/lib/format";
+import type { Match } from "@/data/matches";
+import type { Tier } from "@/data/tiers";
+
+const WHATSAPP_NUMBER = "573186319954";
 
 const checklist = [
   "Confirmaremos el pedido",
@@ -7,15 +15,54 @@ const checklist = [
   "Una vez confirmado el pago recibirás tus boletas",
 ];
 
+interface Selection {
+  tier: Tier;
+  quantity: number;
+}
+
 export default function WhatsAppCheckoutBox({
+  match,
+  selections,
+  total,
   disabled,
   submitted,
   onFinalize,
 }: {
+  match: Match;
+  selections: Selection[];
+  total: number;
   disabled: boolean;
   submitted: boolean;
   onFinalize: () => void;
 }) {
+  const { user } = useAuth();
+
+  function handleFinalize() {
+    const totalQuantity = selections.reduce((sum, s) => sum + s.quantity, 0);
+    const buyerName = user?.user_metadata?.full_name as string | undefined;
+
+    const lines = [
+      "Hola, quiero finalizar mi compra de boletas:",
+      "",
+      `Partido: ${match.home} vs ${match.away}`,
+      `Fecha: ${match.date} · ${match.time}`,
+      "",
+      "Boletas:",
+      ...selections.map(({ tier, quantity }) => `- ${tier.name} x${quantity}`),
+      "",
+      `Cantidad total: ${totalQuantity} boleta(s)`,
+      `Total: ${formatCOP(total)}`,
+    ];
+
+    if (buyerName) {
+      lines.push("", `Nombre: ${buyerName}`);
+    }
+
+    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(lines.join("\n"))}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+    onFinalize();
+  }
+
   if (submitted) {
     return (
       <div className="rounded-3xl border border-whatsapp-500/30 bg-whatsapp-100 p-6 text-center sm:p-8">
@@ -26,9 +73,8 @@ export default function WhatsAppCheckoutBox({
           ¡Solicitud enviada!
         </h3>
         <p className="mx-auto mt-2 max-w-sm text-sm font-medium text-navy-700/70">
-          Esta es una simulación de la maqueta: en producción se abriría un
-          chat de WhatsApp con uno de nuestros asesores para continuar tu
-          compra.
+          Se abrió WhatsApp en una nueva pestaña con el resumen de tu pedido
+          para continuar la compra con uno de nuestros asesores.
         </p>
       </div>
     );
@@ -65,7 +111,7 @@ export default function WhatsAppCheckoutBox({
         size="lg"
         icon={<WhatsAppIcon className="h-5 w-5" />}
         disabled={disabled}
-        onClick={onFinalize}
+        onClick={handleFinalize}
         className="mt-6 w-full"
       >
         Finalizar compra por WhatsApp

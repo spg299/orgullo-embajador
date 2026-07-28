@@ -135,6 +135,9 @@ export default function PurchaseFlow({ match }: { match: Match }) {
               total={total}
             />
             <WhatsAppCheckoutBox
+              match={match}
+              selections={selections}
+              total={total}
               disabled={!hasSelection}
               submitted={submitted}
               onFinalize={() => setSubmitted(true)}

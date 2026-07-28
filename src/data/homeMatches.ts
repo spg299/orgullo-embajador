@@ -46,7 +46,7 @@ export const homeMatches: HomeMatch[] = [
     date: "Martes, 4 de agosto de 2026",
     time: "8:20 p.m.",
     stadium: "Estadio El Campín",
-    status: "proximamente",
+    status: "disponible",
   },
   {
     id: "millonarios-vs-deportivo-cali",
