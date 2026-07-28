@@ -5,6 +5,9 @@ import { supabase } from "@/lib/supabase/client";
 import Button from "@/components/ui/Button";
 import { UploadIcon } from "@/components/ui/Icons";
 import { siteSettings as defaultSiteSettings, type SiteSettings } from "@/data/siteSettings";
+import { Input } from "@/components/ui/admin/Input";
+import { Skeleton } from "@/components/ui/admin/Skeleton";
+import { useToast } from "@/components/ui/admin/Toast";
 
 const FIELDS: { key: keyof SiteSettings; label: string; hint?: string }[] = [
   { key: "whatsapp_number", label: "Número de WhatsApp", hint: "Solo dígitos, con código de país. Ej. 573186319954" },
@@ -21,6 +24,7 @@ const LOGO_FIELDS: { key: "site_logo_url" | "millonarios_crest_url"; label: stri
 ];
 
 export default function AdminConfiguracionPage() {
+  const toast = useToast();
   const [settings, setSettings] = useState<SiteSettings>(defaultSiteSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -64,8 +68,11 @@ export default function AdminConfiguracionPage() {
 
     if (res.ok) {
       setSettings((prev) => ({ ...prev, [field.key]: body.url }));
+      toast.success("Imagen subida correctamente.");
     } else {
-      setError(body.error ?? "No se pudo subir la imagen.");
+      const message = body.error ?? "No se pudo subir la imagen.";
+      setError(message);
+      toast.error(message);
     }
   }
 
@@ -87,19 +94,22 @@ export default function AdminConfiguracionPage() {
     setSaving(false);
     if (res.ok) {
       setSaved(true);
+      toast.success("Configuración guardada correctamente.");
       setTimeout(() => setSaved(false), 2500);
     } else {
       const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "No se pudo guardar la configuración.");
+      const message = body.error ?? "No se pudo guardar la configuración.";
+      setError(message);
+      toast.error(message);
     }
   }
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="font-display text-2xl font-extrabold tracking-tight text-navy-950">
+      <h1 className="font-display text-2xl font-extrabold tracking-tight text-admin-text">
         Configuración
       </h1>
-      <p className="mt-1 text-sm font-medium text-navy-700/60">
+      <p className="mt-1 text-sm font-medium text-admin-text-muted">
         Datos de contacto y redes que se muestran en todo el sitio (footer, botón de WhatsApp,
         checkout).
       </p>
@@ -116,21 +126,30 @@ export default function AdminConfiguracionPage() {
         }}
       />
 
-      <div className="mt-6 rounded-3xl border border-navy-900/8 bg-white p-6 shadow-card sm:p-8">
+      <div className="mt-6 rounded-admin-xl border border-admin-border bg-admin-surface p-6 shadow-admin-xs sm:p-8">
         {loading ? (
-          <p className="text-sm font-medium text-navy-700/60">Cargando...</p>
+          <div className="flex flex-col gap-4 border-b border-admin-border pb-6">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-14 w-14 rounded-admin-md" />
+              <Skeleton className="h-8 w-40" />
+            </div>
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-14 w-14 rounded-admin-md" />
+              <Skeleton className="h-8 w-40" />
+            </div>
+          </div>
         ) : (
-          <div className="flex flex-col gap-4 border-b border-navy-900/8 pb-6">
+          <div className="flex flex-col gap-4 border-b border-admin-border pb-6">
             {LOGO_FIELDS.map((field) => (
               <div key={field.key} className="flex items-center gap-4">
                 {/* eslint-disable-next-line @next/next/no-img-element -- admin-supplied URLs vary in host/size; next/image adds no real benefit here */}
                 <img
                   src={settings[field.key]}
                   alt={field.label}
-                  className="h-14 w-14 rounded-xl border border-navy-900/8 object-contain"
+                  className="h-14 w-14 rounded-admin-md border border-admin-border object-contain"
                 />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-navy-900/80">{field.label}</p>
+                  <p className="text-sm font-medium text-admin-text/80">{field.label}</p>
                   <Button
                     type="button"
                     variant="secondary"
@@ -151,23 +170,25 @@ export default function AdminConfiguracionPage() {
           </div>
         )}
 
-        {loading ? null : (
+        {loading ? (
+          <div className="mt-6 flex flex-col gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : (
           <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
             {FIELDS.map((field) => (
-              <label key={field.key} className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-navy-900/80">{field.label}</span>
-                <input
-                  value={settings[field.key]}
-                  onChange={(e) => setSettings({ ...settings, [field.key]: e.target.value })}
-                  className="rounded-xl border border-navy-900/12 px-4 py-2.5 text-sm"
-                />
-                {field.hint && (
-                  <span className="text-xs font-medium text-navy-700/50">{field.hint}</span>
-                )}
-              </label>
+              <Input
+                key={field.key}
+                label={field.label}
+                hint={field.hint}
+                value={settings[field.key]}
+                onChange={(e) => setSettings({ ...settings, [field.key]: e.target.value })}
+              />
             ))}
 
-            {error && <p className="text-sm text-rose-600">{error}</p>}
+            {error && <p className="text-sm text-rose-500">{error}</p>}
 
             <div className="mt-2 flex items-center gap-3">
               <Button type="submit" variant="primary" disabled={saving}>

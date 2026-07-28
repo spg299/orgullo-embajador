@@ -5,6 +5,15 @@ import { supabase } from "@/lib/supabase/client";
 import Button from "@/components/ui/Button";
 import { PencilIcon, TrashIcon } from "@/components/ui/Icons";
 import { siteSettings as defaultSiteSettings } from "@/data/siteSettings";
+import { DataTable, type DataTableColumn } from "@/components/ui/admin/DataTable";
+import { useDataTable } from "@/components/ui/admin/useDataTable";
+import { Dialog } from "@/components/ui/admin/Dialog";
+import { ConfirmDialog } from "@/components/ui/admin/ConfirmDialog";
+import { Input } from "@/components/ui/admin/Input";
+import { Textarea } from "@/components/ui/admin/Textarea";
+import { Checkbox } from "@/components/ui/admin/Checkbox";
+import { Badge } from "@/components/ui/admin/Badge";
+import { useToast } from "@/components/ui/admin/Toast";
 
 type MatchStatus = "available" | "upcoming" | "sold_out";
 
@@ -27,11 +36,14 @@ interface VideoRow {
 const emptyVideo: Omit<VideoRow, "id"> = { url: "", active: true, sort_order: 0 };
 
 export default function AdminHeroPage() {
+  const toast = useToast();
   const [matches, setMatches] = useState<MatchRow[] | null>(null);
   const [videos, setVideos] = useState<VideoRow[] | null>(null);
   const [editingVideo, setEditingVideo] = useState<Partial<VideoRow> | null>(null);
   const [savingVideo, setSavingVideo] = useState(false);
   const [videoError, setVideoError] = useState<string | null>(null);
+  const [pendingVideoDelete, setPendingVideoDelete] = useState<VideoRow | null>(null);
+  const [deletingVideo, setDeletingVideo] = useState(false);
 
   const [content, setContent] = useState({
     hero_headline: defaultSiteSettings.hero_headline,
@@ -43,6 +55,12 @@ export default function AdminHeroPage() {
 
   const matchesLoading = matches === null;
   const videosLoading = videos === null;
+
+  const videoTable = useDataTable<VideoRow>({
+    data: videos ?? [],
+    searchableFields: ["url"],
+    initialSort: { field: "sort_order", direction: "asc" },
+  });
 
   async function fetchMatches(): Promise<MatchRow[]> {
     const { data, error } = await supabase
@@ -94,19 +112,24 @@ export default function AdminHeroPage() {
     fetchMatches().then(setMatches);
   }
 
-  async function handleVideoDelete(id: string) {
-    if (!confirm("¿Eliminar este video?")) return;
+  async function confirmVideoDelete() {
+    if (!pendingVideoDelete) return;
+    setDeletingVideo(true);
     const accessToken = await getAccessToken();
     const res = await fetch("/api/admin/hero-videos", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, id }),
+      body: JSON.stringify({ accessToken, id: pendingVideoDelete.id }),
     });
-    if (res.ok) fetchVideos().then(setVideos);
-    else {
+    setDeletingVideo(false);
+    if (res.ok) {
+      fetchVideos().then(setVideos);
+      toast.success("Video eliminado.");
+    } else {
       const body = await res.json().catch(() => ({}));
-      alert(body.error ?? "No se pudo eliminar.");
+      toast.error(body.error ?? "No se pudo eliminar.");
     }
+    setPendingVideoDelete(null);
   }
 
   async function handleVideoSubmit(e: FormEvent) {
@@ -126,9 +149,12 @@ export default function AdminHeroPage() {
     if (res.ok) {
       setEditingVideo(null);
       fetchVideos().then(setVideos);
+      toast.success("Video guardado correctamente.");
     } else {
       const body = await res.json().catch(() => ({}));
-      setVideoError(body.error ?? "No se pudo guardar el video.");
+      const message = body.error ?? "No se pudo guardar el video.";
+      setVideoError(message);
+      toast.error(message);
     }
   }
 
@@ -157,58 +183,67 @@ export default function AdminHeroPage() {
     setSavingContent(false);
     if (res.ok) {
       setContentSaved(true);
+      toast.success("Contenido del Hero guardado.");
       setTimeout(() => setContentSaved(false), 2500);
     } else {
       const body = await res.json().catch(() => ({}));
-      alert(body.error ?? "No se pudo guardar el contenido del Hero.");
+      toast.error(body.error ?? "No se pudo guardar el contenido del Hero.");
     }
   }
 
   const matchList = matches ?? [];
-  const videoList = videos ?? [];
   const selectedCount = matchList.filter((m) => m.show_in_hero && m.status !== "sold_out").length;
 
+  const videoColumns: DataTableColumn<VideoRow>[] = [
+    {
+      key: "url",
+      header: "URL",
+      render: (item) => <span className="block max-w-xs truncate font-medium text-admin-text">{item.url}</span>,
+    },
+    { key: "sort_order", header: "Orden", sortable: true },
+    {
+      key: "active",
+      header: "Estado",
+      sortable: true,
+      render: (item) => (
+        <button type="button" onClick={() => toggleVideoActive(item)}>
+          <Badge variant={item.active ? "success" : "neutral"}>{item.active ? "Activo" : "Inactivo"}</Badge>
+        </button>
+      ),
+    },
+  ];
+
   return (
-    <div className="mx-auto max-w-3xl">
-      <h1 className="font-display text-2xl font-extrabold tracking-tight text-navy-950">Hero</h1>
-      <p className="mt-1 text-sm font-medium text-navy-700/60">
+    <div className="mx-auto max-w-4xl">
+      <h1 className="font-display text-2xl font-extrabold tracking-tight text-admin-text">Hero</h1>
+      <p className="mt-1 text-sm font-medium text-admin-text-muted">
         Administra los videos e imágenes de fondo, el texto y el botón del Hero, y qué partidos
         aparecen en el carrusel.
       </p>
 
       {/* Texto y botón */}
-      <div className="mt-8 rounded-3xl border border-navy-900/8 bg-white p-6 shadow-card sm:p-8">
-        <h2 className="font-display text-lg font-bold tracking-tight text-navy-950">
+      <div className="mt-8 rounded-admin-xl border border-admin-border bg-admin-surface p-6 shadow-admin-xs sm:p-8">
+        <h2 className="font-display text-lg font-bold tracking-tight text-admin-text">
           Texto y botón
         </h2>
         <form className="mt-4 flex flex-col gap-4" onSubmit={handleContentSubmit}>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-navy-900/80">Título</span>
-            <input
-              value={content.hero_headline}
-              onChange={(e) => setContent({ ...content, hero_headline: e.target.value })}
-              className="rounded-xl border border-navy-900/12 px-4 py-2.5 text-sm"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-navy-900/80">Subtítulo</span>
-            <textarea
-              rows={2}
-              value={content.hero_subtext}
-              onChange={(e) => setContent({ ...content, hero_subtext: e.target.value })}
-              className="rounded-xl border border-navy-900/12 px-4 py-2.5 text-sm"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-navy-900/80">
-              Texto del botón (cuando hay boletas disponibles)
-            </span>
-            <input
-              value={content.hero_button_label}
-              onChange={(e) => setContent({ ...content, hero_button_label: e.target.value })}
-              className="w-64 rounded-xl border border-navy-900/12 px-4 py-2.5 text-sm"
-            />
-          </label>
+          <Input
+            label="Título"
+            value={content.hero_headline}
+            onChange={(e) => setContent({ ...content, hero_headline: e.target.value })}
+          />
+          <Textarea
+            label="Subtítulo"
+            rows={2}
+            value={content.hero_subtext}
+            onChange={(e) => setContent({ ...content, hero_subtext: e.target.value })}
+          />
+          <Input
+            label="Texto del botón (cuando hay boletas disponibles)"
+            value={content.hero_button_label}
+            onChange={(e) => setContent({ ...content, hero_button_label: e.target.value })}
+            className="w-64"
+          />
           <div className="flex items-center gap-3">
             <Button type="submit" variant="primary" size="sm" disabled={savingContent}>
               {savingContent ? "Guardando..." : "Guardar cambios"}
@@ -223,14 +258,14 @@ export default function AdminHeroPage() {
       {/* Videos */}
       <div className="mt-8">
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-lg font-bold tracking-tight text-navy-950">
+          <h2 className="font-display text-lg font-bold tracking-tight text-admin-text">
             Videos e imágenes de fondo
           </h2>
           <Button
             variant="primary"
             size="sm"
             onClick={() => {
-              setEditingVideo({ ...emptyVideo, sort_order: videoList.length + 1 });
+              setEditingVideo({ ...emptyVideo, sort_order: (videos?.length ?? 0) + 1 });
               setVideoError(null);
             }}
           >
@@ -238,106 +273,71 @@ export default function AdminHeroPage() {
           </Button>
         </div>
 
-        <div className="mt-4 overflow-hidden rounded-3xl border border-navy-900/8 bg-white shadow-card">
-          {videosLoading ? (
-            <p className="p-6 text-sm font-medium text-navy-700/60">Cargando...</p>
-          ) : videoList.length === 0 ? (
-            <p className="p-6 text-sm font-medium text-navy-700/60">Aún no hay videos.</p>
-          ) : (
-            <table className="w-full text-left text-sm">
-              <thead className="bg-royal-50/60 text-xs font-semibold uppercase tracking-wider text-navy-700/60">
-                <tr>
-                  <th className="px-5 py-3">URL</th>
-                  <th className="px-5 py-3">Orden</th>
-                  <th className="px-5 py-3">Estado</th>
-                  <th className="px-5 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-navy-900/5">
-                {videoList.map((item) => (
-                  <tr key={item.id}>
-                    <td className="max-w-xs truncate px-5 py-3 font-medium text-navy-950">
-                      {item.url}
-                    </td>
-                    <td className="px-5 py-3 text-navy-700/70">{item.sort_order}</td>
-                    <td className="px-5 py-3">
-                      <button
-                        type="button"
-                        onClick={() => toggleVideoActive(item)}
-                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          item.active
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-navy-900/5 text-navy-700/50"
-                        }`}
-                      >
-                        {item.active ? "Activo" : "Inactivo"}
-                      </button>
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          aria-label="Editar"
-                          onClick={() => {
-                            setEditingVideo(item);
-                            setVideoError(null);
-                          }}
-                          className="flex h-8 w-8 items-center justify-center rounded-full text-navy-700 hover:bg-royal-50"
-                        >
-                          <PencilIcon />
-                        </button>
-                        <button
-                          type="button"
-                          aria-label="Eliminar"
-                          onClick={() => handleVideoDelete(item.id)}
-                          className="flex h-8 w-8 items-center justify-center rounded-full text-rose-600 hover:bg-rose-50"
-                        >
-                          <TrashIcon />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+        <div className="mt-4">
+          <DataTable
+            table={videoTable}
+            keyField="id"
+            loading={videosLoading}
+            emptyMessage="Aún no hay videos."
+            searchPlaceholder="Buscar por URL..."
+            columns={videoColumns}
+            renderActions={(item) => (
+              <>
+                <button
+                  type="button"
+                  aria-label="Editar"
+                  onClick={() => {
+                    setEditingVideo(item);
+                    setVideoError(null);
+                  }}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-admin-text-muted transition-colors hover:bg-admin-bg hover:text-admin-text"
+                >
+                  <PencilIcon />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Eliminar"
+                  onClick={() => setPendingVideoDelete(item)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-rose-600 transition-colors hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                >
+                  <TrashIcon />
+                </button>
+              </>
+            )}
+          />
         </div>
       </div>
 
       {/* Partidos en el carrusel */}
       <div className="mt-8">
-        <h2 className="font-display text-lg font-bold tracking-tight text-navy-950">
+        <h2 className="font-display text-lg font-bold tracking-tight text-admin-text">
           Partidos en el carrusel
         </h2>
-        <p className="mt-1 text-sm font-medium text-navy-700/60">
+        <p className="mt-1 text-sm font-medium text-admin-text-muted">
           El sitio muestra hasta 3, en orden de fecha, excluyendo los agotados. Actualmente hay{" "}
           {selectedCount} partido(s) elegible(s).
         </p>
 
-        <div className="mt-4 overflow-hidden rounded-3xl border border-navy-900/8 bg-white shadow-card">
+        <div className="mt-4 overflow-hidden rounded-admin-xl border border-admin-border bg-admin-surface shadow-admin-xs">
           {matchesLoading ? (
-            <p className="p-6 text-sm font-medium text-navy-700/60">Cargando...</p>
+            <p className="p-6 text-sm font-medium text-admin-text-muted">Cargando...</p>
           ) : (
-            <ul className="divide-y divide-navy-900/5">
+            <ul className="divide-y divide-admin-border">
               {matchList.map((match) => (
                 <li key={match.id} className="flex items-center justify-between gap-4 px-5 py-4">
                   <div>
-                    <p className="font-semibold text-navy-950">Millonarios vs {match.rival}</p>
-                    <p className="text-sm text-navy-700/60">
+                    <p className="font-semibold text-admin-text">Millonarios vs {match.rival}</p>
+                    <p className="text-sm text-admin-text-muted">
                       {match.match_date} · {match.match_time}
                       {match.status === "sold_out" && " · Agotado (no se muestra en el Hero)"}
                     </p>
                   </div>
-                  <label className="flex shrink-0 items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={match.show_in_hero}
-                      disabled={match.status === "sold_out"}
-                      onChange={() => toggleMatch(match)}
-                      className="h-5 w-5 rounded border-navy-900/25 text-royal-500 disabled:opacity-30"
-                    />
-                    <span className="text-sm font-medium text-navy-800">Mostrar</span>
-                  </label>
+                  <Checkbox
+                    label="Mostrar"
+                    checked={match.show_in_hero}
+                    disabled={match.status === "sold_out"}
+                    onChange={() => toggleMatch(match)}
+                  />
                 </li>
               ))}
             </ul>
@@ -345,62 +345,58 @@ export default function AdminHeroPage() {
         </div>
       </div>
 
-      {editingVideo && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-navy-950/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl border border-navy-900/8 bg-white p-6 shadow-soft sm:p-8">
-            <h2 className="font-display text-xl font-bold tracking-tight text-navy-950">
-              {editingVideo.id ? "Editar video" : "Nuevo video"}
-            </h2>
+      <Dialog
+        open={editingVideo !== null}
+        onClose={() => setEditingVideo(null)}
+        title={editingVideo?.id ? "Editar video" : "Nuevo video"}
+      >
+        {editingVideo && (
+          <form className="flex flex-col gap-4" onSubmit={handleVideoSubmit}>
+            <Input
+              label="URL del video o imagen (ej. /videos/mi-video.mp4 o https://.../foto.jpg)"
+              required
+              value={editingVideo.url ?? ""}
+              onChange={(e) => setEditingVideo({ ...editingVideo, url: e.target.value })}
+            />
 
-            <form className="mt-6 flex flex-col gap-4" onSubmit={handleVideoSubmit}>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-navy-900/80">
-                  URL del video o imagen (ej. /videos/mi-video.mp4 o https://.../foto.jpg)
-                </span>
-                <input
-                  required
-                  value={editingVideo.url ?? ""}
-                  onChange={(e) => setEditingVideo({ ...editingVideo, url: e.target.value })}
-                  className="rounded-xl border border-navy-900/12 px-4 py-2.5 text-sm"
-                />
-              </label>
+            <Input
+              label="Orden"
+              type="number"
+              value={editingVideo.sort_order ?? 0}
+              onChange={(e) => setEditingVideo({ ...editingVideo, sort_order: Number(e.target.value) })}
+              className="w-32"
+            />
 
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-navy-900/80">Orden</span>
-                <input
-                  type="number"
-                  value={editingVideo.sort_order ?? 0}
-                  onChange={(e) =>
-                    setEditingVideo({ ...editingVideo, sort_order: Number(e.target.value) })
-                  }
-                  className="w-32 rounded-xl border border-navy-900/12 px-4 py-2.5 text-sm"
-                />
-              </label>
+            <Checkbox
+              label="Activo"
+              checked={editingVideo.active ?? true}
+              onChange={(e) => setEditingVideo({ ...editingVideo, active: e.target.checked })}
+            />
 
-              <label className="flex items-center gap-2.5">
-                <input
-                  type="checkbox"
-                  checked={editingVideo.active ?? true}
-                  onChange={(e) => setEditingVideo({ ...editingVideo, active: e.target.checked })}
-                  className="h-4 w-4 rounded border-navy-900/25 text-royal-500"
-                />
-                <span className="text-sm font-medium text-navy-900/80">Activo</span>
-              </label>
+            {videoError && <p className="text-sm text-rose-500">{videoError}</p>}
 
-              {videoError && <p className="text-sm text-rose-600">{videoError}</p>}
+            <div className="mt-2 flex gap-3">
+              <Button type="submit" variant="primary" className="flex-1" disabled={savingVideo}>
+                {savingVideo ? "Guardando..." : "Guardar"}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setEditingVideo(null)}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        )}
+      </Dialog>
 
-              <div className="mt-2 flex gap-3">
-                <Button type="submit" variant="primary" className="flex-1" disabled={savingVideo}>
-                  {savingVideo ? "Guardando..." : "Guardar"}
-                </Button>
-                <Button type="button" variant="ghost" onClick={() => setEditingVideo(null)}>
-                  Cancelar
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={pendingVideoDelete !== null}
+        title="Eliminar video"
+        description="¿Eliminar este video? Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        destructive
+        loading={deletingVideo}
+        onConfirm={confirmVideoDelete}
+        onCancel={() => setPendingVideoDelete(null)}
+      />
     </div>
   );
 }
