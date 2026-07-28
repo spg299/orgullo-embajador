@@ -34,6 +34,22 @@ const availabilityLabels: Record<Availability, string> = {
   baja: "Últimas boletas",
 };
 
+// TEMPORARY DEBUG: surfaces the real Supabase/API error instead of a generic
+// fallback, to diagnose why saving a tier was failing silently. Reads the
+// response as text first (not res.json() directly) so a non-JSON error body
+// — e.g. an uncaught exception in the route handler — is still visible
+// instead of being swallowed into an empty object. Revert to a friendly
+// message once the root cause is confirmed fixed.
+async function describeError(res: Response): Promise<string> {
+  const text = await res.text();
+  try {
+    const body = JSON.parse(text);
+    return body.error || text || `Error ${res.status}`;
+  } catch {
+    return text || `Error ${res.status}`;
+  }
+}
+
 export default function AdminPreciosPage() {
   const [tiers, setTiers] = useState<TierRow[] | null>(null);
   const [editing, setEditing] = useState<TierRow | null>(null);
@@ -74,8 +90,9 @@ export default function AdminPreciosPage() {
     });
     if (res.ok) fetchTiers().then(setTiers);
     else {
-      const body = await res.json().catch(() => ({}));
-      alert(body.error ?? "No se pudo eliminar la localidad.");
+      const message = await describeError(res);
+      console.error("DEBUG tiers delete failed:", res.status, message);
+      alert(message);
     }
   }
 
@@ -99,8 +116,9 @@ export default function AdminPreciosPage() {
       setEditing(null);
       fetchTiers().then(setTiers);
     } else {
-      const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "No se pudo guardar la localidad.");
+      const message = await describeError(res);
+      console.error("DEBUG tiers save failed:", res.status, message);
+      setError(message);
     }
   }
 
