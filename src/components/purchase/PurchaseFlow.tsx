@@ -20,12 +20,24 @@ export default function PurchaseFlow({ match }: { match: Match }) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
 
+  // Per-match price overrides set from /admin/matches take priority over the
+  // general prices in data/tiers.ts; any tier without an override just keeps
+  // its default price.
+  const effectiveTiers = useMemo(
+    () =>
+      tiers.map((tier) => ({
+        ...tier,
+        price: match.tierPrices?.[tier.id] ?? tier.price,
+      })),
+    [match.tierPrices],
+  );
+
   const selections = useMemo(
     () =>
-      tiers
+      effectiveTiers
         .map((tier) => ({ tier, quantity: quantities[tier.id] ?? 0 }))
         .filter((selection) => selection.quantity > 0),
-    [quantities],
+    [effectiveTiers, quantities],
   );
 
   const subtotal = selections.reduce(
@@ -106,7 +118,7 @@ export default function PurchaseFlow({ match }: { match: Match }) {
               </p>
 
               <div className="mt-6 space-y-4">
-                {tiers.map((tier) => (
+                {effectiveTiers.map((tier) => (
                   <TierRow
                     key={tier.id}
                     tier={tier}

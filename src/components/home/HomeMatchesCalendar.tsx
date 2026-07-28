@@ -5,7 +5,13 @@ import Container from "@/components/ui/Container";
 import CrestBadge from "@/components/ui/CrestBadge";
 import MatchCtaButton from "@/components/home/MatchCtaButton";
 import { CalendarIcon, ClockIcon, MapPinIcon } from "@/components/ui/Icons";
-import { homeMatches, MILLONARIOS_CREST, type HomeMatch, type MatchStatus } from "@/data/homeMatches";
+import {
+  homeMatches,
+  fetchHomeMatches,
+  MILLONARIOS_CREST,
+  type HomeMatch,
+  type MatchStatus,
+} from "@/data/homeMatches";
 
 const statusConfig: Record<MatchStatus, { label: string; className: string }> = {
   sold_out: {
@@ -111,6 +117,14 @@ function MatchCalendarCard({ match, delayMs }: { match: HomeMatch; delayMs: numb
 }
 
 export default function HomeMatchesCalendar() {
+  // Seeded with the static fallback for an identical first paint; upgraded
+  // silently to the live /admin/matches data once the fetch resolves.
+  const [matches, setMatches] = useState(homeMatches);
+
+  useEffect(() => {
+    fetchHomeMatches().then(setMatches);
+  }, []);
+
   return (
     <section id="partidos" className="relative overflow-hidden bg-navy-950 py-24">
       <div className="pointer-events-none absolute -top-32 right-1/4 h-96 w-96 rounded-full bg-royal-500/20 blur-3xl" />
@@ -131,7 +145,7 @@ export default function HomeMatchesCalendar() {
         </div>
 
         <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {homeMatches.map((match, i) => (
+          {matches.map((match, i) => (
             <MatchCalendarCard key={match.id} match={match} delayMs={(i % 3) * 120} />
           ))}
         </div>

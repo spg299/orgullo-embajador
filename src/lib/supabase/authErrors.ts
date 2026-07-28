@@ -13,5 +13,7 @@ export function supabaseAuthErrorMessage(error: unknown): string {
   for (const [pattern, friendly] of patterns) {
     if (pattern.test(message)) return friendly;
   }
-  return "Ocurrió un error inesperado. Intenta de nuevo.";
+  // No friendly translation for this one — surface Supabase's real message
+  // instead of a generic "something went wrong" that hides what happened.
+  return message || "Error desconocido al comunicarse con Supabase.";
 }

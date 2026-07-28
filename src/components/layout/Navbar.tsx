@@ -16,23 +16,27 @@ const links = [
   { href: "/#contacto", label: "Contacto" },
 ];
 
-// 6 staggered items total: the 4 nav links + the WhatsApp button + the
-// login/logout button. Kept in sync with the JSX below so open/close
-// stagger delays line up in both directions.
-const MOBILE_ITEM_COUNT = links.length + 2;
+const ADMIN_LINK = { href: "/admin", label: "Panel de administración" };
+
+// Staggered items: the nav links (+1 more when the admin link is shown) +
+// the WhatsApp button + the login/logout button. Kept in sync with the JSX
+// below so open/close stagger delays line up in both directions.
 const MOBILE_STAGGER_MS = 70;
 const MOBILE_ITEM_TRANSITION =
   "transition-all duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)]";
 
-function mobileItemStyle(open: boolean, index: number): CSSProperties {
-  const delayIndex = open ? index : MOBILE_ITEM_COUNT - 1 - index;
+function mobileItemStyle(open: boolean, index: number, total: number): CSSProperties {
+  const delayIndex = open ? index : total - 1 - index;
   return { transitionDelay: `${delayIndex * MOBILE_STAGGER_MS}ms` };
 }
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
+
+  const navLinks = isAdmin ? [...links, ADMIN_LINK] : links;
+  const mobileItemCount = navLinks.length + 2;
 
   const firstName = (user?.user_metadata?.full_name as string | undefined)?.split(" ")[0];
 
@@ -56,7 +60,7 @@ export default function Navbar() {
           </Link>
 
           <nav className="hidden items-center gap-9 lg:flex">
-            {links.map((link) => (
+            {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -114,13 +118,13 @@ export default function Navbar() {
                 open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
               }`}
             >
-              {links.map((link, i) => (
+              {navLinks.map((link, i) => (
                 <Link
                   key={link.href}
                   href={link.href}
                   onClick={() => setOpen(false)}
                   tabIndex={open ? 0 : -1}
-                  style={mobileItemStyle(open, i)}
+                  style={mobileItemStyle(open, i, mobileItemCount)}
                   className={`group relative rounded-lg px-3 py-2.5 text-sm font-medium text-navy-800 hover:scale-[1.025] hover:text-royal-500 ${MOBILE_ITEM_TRANSITION} ${
                     open ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"
                   }`}
@@ -132,7 +136,7 @@ export default function Navbar() {
 
               <div className="mt-2 flex flex-col gap-2 px-1">
                 <div
-                  style={mobileItemStyle(open, links.length)}
+                  style={mobileItemStyle(open, navLinks.length, mobileItemCount)}
                   className={`${MOBILE_ITEM_TRANSITION} ${
                     open ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"
                   }`}
@@ -148,7 +152,7 @@ export default function Navbar() {
                 </div>
 
                 <div
-                  style={mobileItemStyle(open, links.length + 1)}
+                  style={mobileItemStyle(open, navLinks.length + 1, mobileItemCount)}
                   className={`flex flex-col gap-2 ${MOBILE_ITEM_TRANSITION} ${
                     open ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"
                   }`}

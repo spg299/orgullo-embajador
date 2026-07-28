@@ -1,4 +1,4 @@
-import { homeMatches, MILLONARIOS_CREST, type HomeMatch } from "./homeMatches";
+import { homeMatches, fetchHomeMatchById, MILLONARIOS_CREST, type HomeMatch } from "./homeMatches";
 
 export interface Match {
   id: string;
@@ -14,12 +14,15 @@ export interface Match {
   time: string;
   stadium: string;
   city: string;
+  /** Optional per-match price override, keyed by tier id (data/tiers.ts). */
+  tierPrices?: Record<string, number> | null;
 }
 
-// homeMatches (data/homeMatches.ts) is the single source of truth for every
+// homeMatches (data/homeMatches.ts, backed by the Supabase "matches" table
+// managed from /admin/matches) is the single source of truth for every
 // fixture — Hero, the calendar, and checkout (via getMatchById below) all
-// read from it, so editing a match's status/name/date/crest there updates
-// every view with no other code changes.
+// read from it, so editing a match in the admin panel updates every view
+// with no other code changes.
 function toMatch(homeMatch: HomeMatch): Match {
   return {
     id: homeMatch.id,
@@ -34,10 +37,16 @@ function toMatch(homeMatch: HomeMatch): Match {
     time: homeMatch.time,
     stadium: homeMatch.stadium,
     city: "Bogotá D.C.",
+    tierPrices: homeMatch.tierPrices,
   };
 }
 
-export function getMatchById(id: string | undefined): Match {
-  const homeMatch = homeMatches.find((match) => match.id === id) ?? homeMatches[0];
-  return toMatch(homeMatch);
+export async function getMatchById(id: string | undefined): Promise<Match> {
+  if (id) {
+    const fromDb = await fetchHomeMatchById(id);
+    if (fromDb) return toMatch(fromDb);
+  }
+
+  const fallback = homeMatches.find((match) => match.id === id) ?? homeMatches[0];
+  return toMatch(fallback);
 }

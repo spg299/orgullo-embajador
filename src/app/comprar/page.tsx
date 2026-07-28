@@ -14,7 +14,7 @@ export default async function ComprarPage({
   searchParams: Promise<{ match?: string }>;
 }) {
   const { match: matchId } = await searchParams;
-  const match = getMatchById(matchId);
+  const match = await getMatchById(matchId);
 
   return (
     <>

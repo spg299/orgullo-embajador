@@ -1,21 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import Container from "@/components/ui/Container";
 import CrestBadge from "@/components/ui/CrestBadge";
 import MatchCtaButton from "@/components/home/MatchCtaButton";
 import { CalendarIcon, MapPinIcon, ArrowRightIcon } from "@/components/ui/Icons";
-import { homeMatches, MILLONARIOS_CREST } from "@/data/homeMatches";
-
-const heroVideos = [
-  "/videos/hero-stadium.mp4",
-  "/videos/pasion-1.mp4",
-  "/videos/pasion-2.mp4",
-];
-
-// Same source of truth as the "Calendario de partidos de local" section:
-// the next matches that aren't sold out, in schedule order.
-const upcomingMatches = homeMatches.filter((m) => m.status !== "sold_out").slice(0, 3);
+import { homeMatches, fetchHomeMatches, MILLONARIOS_CREST } from "@/data/homeMatches";
+import { heroVideos, fetchHeroVideos } from "@/data/heroVideos";
 
 const AUTOPLAY_MS = 5000;
 const RESUME_DELAY_MS = 6000;
@@ -24,6 +15,10 @@ const DRAG_THRESHOLD_RATIO = 0.18;
 const DRAG_DEADZONE_PX = 6;
 
 export default function Hero() {
+  // Seeded with the static fallback so the first paint is identical to
+  // before; fetchHomeMatches then silently upgrades it to the live data
+  // from /admin/matches once it resolves (or leaves it as-is if that fails).
+  const [matchesData, setMatchesData] = useState(homeMatches);
   const [index, setIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -36,18 +31,39 @@ export default function Hero() {
   const resumeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [tick, setTick] = useState(0);
+  const [videos, setVideos] = useState(heroVideos);
+
+  useEffect(() => {
+    fetchHomeMatches().then(setMatchesData);
+    fetchHeroVideos().then(setVideos);
+  }, []);
+
+  // Same source of truth as the "Calendario de partidos de local" section:
+  // the next matches that aren't sold out and are flagged for the Hero
+  // (from /admin/hero), in schedule order.
+  const upcomingMatches = useMemo(
+    () =>
+      matchesData.filter((m) => m.status !== "sold_out" && m.showInHero !== false).slice(0, 3),
+    [matchesData],
+  );
+
+  // Clamped for rendering/arithmetic (not stored back into state) in case
+  // the live data resolves with fewer matches than the fallback and `index`
+  // would otherwise point past the end.
+  const activeIndex = index < upcomingMatches.length ? index : 0;
 
   // Autoplay: advances every AUTOPLAY_MS unless the user is dragging or just
-  // interacted (isPaused). Only depends on isPaused/isDragging, never on
-  // index itself, so an autoplay-triggered advance never restarts its own
-  // timer — the cadence stays steady instead of feeling jumpy.
+  // interacted (isPaused). Doesn't depend on index itself, so an
+  // autoplay-triggered advance never restarts its own timer — the cadence
+  // stays steady instead of feeling jumpy. Depends on upcomingMatches.length
+  // so it re-subscribes correctly if the live data changes the slide count.
   useEffect(() => {
-    if (isPaused || isDragging) return;
+    if (isPaused || isDragging || upcomingMatches.length === 0) return;
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % upcomingMatches.length);
     }, AUTOPLAY_MS);
     return () => clearInterval(timer);
-  }, [isPaused, isDragging]);
+  }, [isPaused, isDragging, upcomingMatches.length]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -112,7 +128,7 @@ export default function Hero() {
     if (!isDragging) return;
     const ratio = dragX / viewportWidthPx;
     if (Math.abs(ratio) > DRAG_THRESHOLD_RATIO) {
-      goTo(index + (ratio < 0 ? 1 : -1));
+      goTo(activeIndex + (ratio < 0 ? 1 : -1));
     }
     setIsDragging(false);
     setDragX(0);
@@ -123,8 +139,8 @@ export default function Hero() {
   // one preloading the next clip. They swap roles each tick so the crossfade
   // never has more than two full-bleed videos decoding at once.
   const activeLayer = tick % 2;
-  const activeSrc = heroVideos[tick % heroVideos.length];
-  const nextSrc = heroVideos[(tick + 1) % heroVideos.length];
+  const activeSrc = videos[tick % videos.length];
+  const nextSrc = videos[(tick + 1) % videos.length];
   const layerSrcs = activeLayer === 0 ? [activeSrc, nextSrc] : [nextSrc, activeSrc];
 
   const dragPercent = isDragging ? (dragX / viewportWidthPx) * 100 : 0;
@@ -179,7 +195,7 @@ export default function Hero() {
             <div
               className="flex"
               style={{
-                transform: `translateX(calc(${-index * 100}% + ${dragPercent}%))`,
+                transform: `translateX(calc(${-activeIndex * 100}% + ${dragPercent}%))`,
                 transition: isDragging
                   ? "none"
                   : `transform ${SLIDE_TRANSITION_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`,
@@ -189,7 +205,7 @@ export default function Hero() {
                 <div
                   key={m.id}
                   className={`w-full shrink-0 rounded-3xl border border-white/10 bg-white/[0.06] p-5 shadow-soft backdrop-blur-md transition-opacity sm:p-6 ${
-                    i === index ? "opacity-100" : "opacity-60"
+                    i === activeIndex ? "opacity-100" : "opacity-60"
                   }`}
                   style={{ transitionDuration: `${SLIDE_TRANSITION_MS}ms` }}
                 >
@@ -255,7 +271,7 @@ export default function Hero() {
                 pauseThenResume();
               }}
               className={`h-1.5 rounded-full transition-all duration-500 ${
-                i === index ? "w-8 bg-gold-400" : "w-3 bg-white/25 hover:bg-white/40"
+                i === activeIndex ? "w-8 bg-gold-400" : "w-3 bg-white/25 hover:bg-white/40"
               }`}
             />
           ))}
