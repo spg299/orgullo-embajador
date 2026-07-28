@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import CrestBadge from "@/components/ui/CrestBadge";
@@ -17,18 +17,35 @@ const heroVideos = [
 // the next matches that aren't sold out, in schedule order.
 const upcomingMatches = homeMatches.filter((m) => m.status !== "agotado").slice(0, 3);
 
+const AUTOPLAY_MS = 5000;
+const RESUME_DELAY_MS = 6000;
+const SLIDE_TRANSITION_MS = 500;
+const DRAG_THRESHOLD_RATIO = 0.18;
+
 export default function Hero() {
   const [index, setIndex] = useState(0);
-  const match = upcomingMatches[index];
+  const [isPaused, setIsPaused] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragX, setDragX] = useState(0);
+  const [viewportWidthPx, setViewportWidthPx] = useState(1);
+
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const dragStartX = useRef(0);
+  const resumeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [tick, setTick] = useState(0);
 
+  // Autoplay: advances every AUTOPLAY_MS unless the user is dragging or just
+  // interacted (isPaused). Only depends on isPaused/isDragging, never on
+  // index itself, so an autoplay-triggered advance never restarts its own
+  // timer — the cadence stays steady instead of feeling jumpy.
   useEffect(() => {
+    if (isPaused || isDragging) return;
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % upcomingMatches.length);
-    }, 5000);
+    }, AUTOPLAY_MS);
     return () => clearInterval(timer);
-  }, []);
+  }, [isPaused, isDragging]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -37,6 +54,58 @@ export default function Hero() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (resumeTimeout.current) clearTimeout(resumeTimeout.current);
+    };
+  }, []);
+
+  function pauseThenResume() {
+    setIsPaused(true);
+    if (resumeTimeout.current) clearTimeout(resumeTimeout.current);
+    resumeTimeout.current = setTimeout(() => setIsPaused(false), RESUME_DELAY_MS);
+  }
+
+  function goTo(next: number) {
+    setIndex(
+      ((next % upcomingMatches.length) + upcomingMatches.length) % upcomingMatches.length,
+    );
+  }
+
+  function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    // Stops the browser's native link/image drag-ghost from kicking in when
+    // the gesture starts on the "Comprar ahora" link, without blocking the
+    // click a plain tap still needs to fire on release.
+    e.preventDefault();
+    setViewportWidthPx(viewportRef.current?.offsetWidth || 1);
+    dragStartX.current = e.clientX;
+    setIsDragging(true);
+    pauseThenResume();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // Some browsers/pointer types can report an id that's no longer
+      // active by the time capture is requested; the drag still works
+      // fine without capture in that case.
+    }
+  }
+
+  function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
+    if (!isDragging) return;
+    setDragX(e.clientX - dragStartX.current);
+  }
+
+  function endDrag() {
+    if (!isDragging) return;
+    const ratio = dragX / viewportWidthPx;
+    if (Math.abs(ratio) > DRAG_THRESHOLD_RATIO) {
+      goTo(index + (ratio < 0 ? 1 : -1));
+    }
+    setIsDragging(false);
+    setDragX(0);
+    pauseThenResume();
+  }
+
   // Only two <video> elements ever exist in the DOM: the one on screen and the
   // one preloading the next clip. They swap roles each tick so the crossfade
   // never has more than two full-bleed videos decoding at once.
@@ -44,6 +113,8 @@ export default function Hero() {
   const activeSrc = heroVideos[tick % heroVideos.length];
   const nextSrc = heroVideos[(tick + 1) % heroVideos.length];
   const layerSrcs = activeLayer === 0 ? [activeSrc, nextSrc] : [nextSrc, activeSrc];
+
+  const dragPercent = isDragging ? (dragX / viewportWidthPx) * 100 : 0;
 
   return (
     <section id="inicio" className="relative overflow-hidden bg-navy-950">
@@ -68,10 +139,7 @@ export default function Hero() {
       </div>
 
       <Container className="relative flex min-h-[86vh] flex-col justify-center py-24">
-        <div
-          key={match.id}
-          className="max-w-2xl animate-fade-in-up"
-        >
+        <div className="max-w-2xl">
           <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-gold-300 backdrop-blur-sm">
             Boletas oficiales · Millonarios FC
           </span>
@@ -87,45 +155,72 @@ export default function Hero() {
             Campín en minutos.
           </p>
 
-          <div className="mt-10 rounded-3xl border border-white/10 bg-white/[0.06] p-5 shadow-soft backdrop-blur-md sm:p-6">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center -space-x-3">
-                <CrestBadge initial="M" size="md" />
-                <CrestBadge initial={match.rivalInitial} size="md" />
-              </div>
-              <div>
-                <p className="font-display text-lg font-bold tracking-tight text-white">
-                  Millonarios <span className="text-white/40">vs</span>{" "}
-                  {match.rival}
-                </p>
-                <p className="text-xs font-semibold uppercase tracking-wider text-gold-300">
-                  Liga BetPlay Dimayor
-                </p>
-              </div>
-            </div>
+          <div
+            ref={viewportRef}
+            className="mt-10 touch-pan-y select-none overflow-hidden rounded-3xl"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+          >
+            <div
+              className="flex"
+              style={{
+                transform: `translateX(calc(${-index * 100}% + ${dragPercent}%))`,
+                transition: isDragging
+                  ? "none"
+                  : `transform ${SLIDE_TRANSITION_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`,
+              }}
+            >
+              {upcomingMatches.map((m, i) => (
+                <div
+                  key={m.id}
+                  className={`w-full shrink-0 rounded-3xl border border-white/10 bg-white/[0.06] p-5 shadow-soft backdrop-blur-md transition-opacity sm:p-6 ${
+                    i === index ? "opacity-100" : "opacity-60"
+                  }`}
+                  style={{ transitionDuration: `${SLIDE_TRANSITION_MS}ms` }}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center -space-x-3">
+                      <CrestBadge initial="M" size="md" />
+                      <CrestBadge initial={m.rivalInitial} size="md" />
+                    </div>
+                    <div>
+                      <p className="font-display text-lg font-bold tracking-tight text-white">
+                        Millonarios <span className="text-white/40">vs</span>{" "}
+                        {m.rival}
+                      </p>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-gold-300">
+                        Liga BetPlay Dimayor
+                      </p>
+                    </div>
+                  </div>
 
-            <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium text-white/70">
-              <span className="flex items-center gap-1.5">
-                <CalendarIcon className="h-4 w-4 text-gold-400" />
-                {match.date} · {match.time}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <MapPinIcon className="h-4 w-4 text-gold-400" />
-                {match.stadium}, Bogotá D.C.
-              </span>
-            </div>
+                  <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium text-white/70">
+                    <span className="flex items-center gap-1.5">
+                      <CalendarIcon className="h-4 w-4 text-gold-400" />
+                      {m.date} · {m.time}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <MapPinIcon className="h-4 w-4 text-gold-400" />
+                      {m.stadium}, Bogotá D.C.
+                    </span>
+                  </div>
 
-            <div className="mt-6">
-              <Button
-                href={match.buyLink ?? `/comprar?match=${match.id}`}
-                variant="primary"
-                size="lg"
-                icon={<ArrowRightIcon className="h-4 w-4" />}
-                iconPosition="right"
-                className="w-full sm:w-auto"
-              >
-                Comprar ahora
-              </Button>
+                  <div className="mt-6">
+                    <Button
+                      href={m.buyLink ?? `/comprar?match=${m.id}`}
+                      variant="primary"
+                      size="lg"
+                      icon={<ArrowRightIcon className="h-4 w-4" />}
+                      iconPosition="right"
+                      className="w-full sm:w-auto"
+                    >
+                      Comprar ahora
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -135,7 +230,10 @@ export default function Hero() {
             <button
               key={m.id}
               aria-label={`Ver partido Millonarios vs ${m.rival}`}
-              onClick={() => setIndex(i)}
+              onClick={() => {
+                goTo(i);
+                pauseThenResume();
+              }}
               className={`h-1.5 rounded-full transition-all duration-500 ${
                 i === index ? "w-8 bg-gold-400" : "w-3 bg-white/25 hover:bg-white/40"
               }`}
