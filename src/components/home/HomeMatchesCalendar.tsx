@@ -6,7 +6,7 @@ import Container from "@/components/ui/Container";
 import CrestBadge from "@/components/ui/CrestBadge";
 import Button from "@/components/ui/Button";
 import { CalendarIcon, ClockIcon, MapPinIcon } from "@/components/ui/Icons";
-import { homeMatches, type HomeMatch, type MatchStatus } from "@/data/homeMatches";
+import { homeMatches, MILLONARIOS_CREST, type HomeMatch, type MatchStatus } from "@/data/homeMatches";
 
 const statusConfig: Record<MatchStatus, { label: string; className: string }> = {
   agotado: {
@@ -65,8 +65,18 @@ function MatchCalendarCard({ match, delayMs }: { match: HomeMatch; delayMs: numb
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center -space-x-3">
-          <CrestBadge initial="M" size="sm" />
-          <CrestBadge initial={match.rivalInitial} size="sm" />
+          <CrestBadge
+            initial="M"
+            size="sm"
+            crestSrc={MILLONARIOS_CREST}
+            alt="Escudo de Millonarios FC"
+          />
+          <CrestBadge
+            initial={match.rivalInitial}
+            size="sm"
+            crestSrc={match.rivalCrest}
+            alt={`Escudo de ${match.rival}`}
+          />
         </div>
         <StatusBadge status={match.status} />
       </div>

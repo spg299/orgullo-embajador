@@ -31,8 +31,18 @@ export default function OrderSummary({
 
         <div className="mt-4 flex items-center gap-3">
           <div className="flex items-center -space-x-2.5">
-            <CrestBadge initial={match.homeInitial} size="sm" />
-            <CrestBadge initial={match.awayInitial} size="sm" />
+            <CrestBadge
+              initial={match.homeInitial}
+              size="sm"
+              crestSrc={match.homeCrest}
+              alt={`Escudo de ${match.home}`}
+            />
+            <CrestBadge
+              initial={match.awayInitial}
+              size="sm"
+              crestSrc={match.awayCrest}
+              alt={`Escudo de ${match.away}`}
+            />
           </div>
           <p className="font-display text-sm font-bold tracking-tight text-navy-950">
             {match.home} <span className="text-navy-400">vs</span> {match.away}

@@ -1,4 +1,4 @@
-import { homeMatches } from "./homeMatches";
+import { homeMatches, MILLONARIOS_CREST } from "./homeMatches";
 
 export interface Match {
   id: string;
@@ -6,6 +6,9 @@ export interface Match {
   away: string;
   homeInitial: string;
   awayInitial: string;
+  /** Path under /public to each team's official crest (PNG/SVG). */
+  homeCrest?: string;
+  awayCrest?: string;
   competition: string;
   date: string;
   time: string;
@@ -21,6 +24,8 @@ export const matches: Match[] = [
     away: "Bucaramanga",
     homeInitial: "M",
     awayInitial: "B",
+    homeCrest: MILLONARIOS_CREST,
+    awayCrest: "/images/crests/bucaramanga.png",
     competition: "Liga BetPlay Dimayor",
     date: "Domingo, 9 de agosto de 2026",
     time: "4:00 p.m.",
@@ -86,6 +91,8 @@ export function getMatchById(id: string | undefined): Match {
       away: fromHomeMatches.rival,
       homeInitial: "M",
       awayInitial: fromHomeMatches.rivalInitial,
+      homeCrest: MILLONARIOS_CREST,
+      awayCrest: fromHomeMatches.rivalCrest,
       competition: "Liga BetPlay Dimayor",
       date: fromHomeMatches.date,
       time: fromHomeMatches.time,

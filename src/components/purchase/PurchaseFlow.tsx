@@ -58,8 +58,18 @@ export default function PurchaseFlow({ match }: { match: Match }) {
         <div className="mt-6 flex flex-col gap-4 rounded-3xl border border-navy-900/8 bg-white p-6 shadow-card sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center -space-x-3">
-              <CrestBadge initial={match.homeInitial} size="md" />
-              <CrestBadge initial={match.awayInitial} size="md" />
+              <CrestBadge
+                initial={match.homeInitial}
+                size="md"
+                crestSrc={match.homeCrest}
+                alt={`Escudo de ${match.home}`}
+              />
+              <CrestBadge
+                initial={match.awayInitial}
+                size="md"
+                crestSrc={match.awayCrest}
+                alt={`Escudo de ${match.away}`}
+              />
             </div>
             <div>
               <p className="font-display text-lg font-bold tracking-tight text-navy-950">

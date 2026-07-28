@@ -5,7 +5,7 @@ import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import CrestBadge from "@/components/ui/CrestBadge";
 import { CalendarIcon, MapPinIcon, ArrowRightIcon } from "@/components/ui/Icons";
-import { homeMatches } from "@/data/homeMatches";
+import { homeMatches, MILLONARIOS_CREST } from "@/data/homeMatches";
 
 const heroVideos = [
   "/videos/hero-stadium.mp4",
@@ -182,8 +182,18 @@ export default function Hero() {
                 >
                   <div className="flex items-center gap-4">
                     <div className="flex items-center -space-x-3">
-                      <CrestBadge initial="M" size="md" />
-                      <CrestBadge initial={m.rivalInitial} size="md" />
+                      <CrestBadge
+                        initial="M"
+                        size="md"
+                        crestSrc={MILLONARIOS_CREST}
+                        alt="Escudo de Millonarios FC"
+                      />
+                      <CrestBadge
+                        initial={m.rivalInitial}
+                        size="md"
+                        crestSrc={m.rivalCrest}
+                        alt={`Escudo de ${m.rival}`}
+                      />
                     </div>
                     <div>
                       <p className="font-display text-lg font-bold tracking-tight text-white">
