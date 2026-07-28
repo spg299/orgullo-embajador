@@ -23,9 +23,9 @@ begin
     case
       when new.email in (
         'spg29988@hotmail.com',
-        'correo_de_mi_primo_1@example.com',
-        'correo_de_mi_primo_2@example.com',
-        'correo_de_mi_papa@example.com'
+        'haroldortiz1925@gmail.com',
+        'johnperdomo88@gmail.com',
+        'edfabian95@gmail.com'
       ) then 'admin'
       else 'user'
     end,
@@ -48,9 +48,9 @@ update public.profiles
 set role = 'admin'
 where email in (
   'spg29988@hotmail.com',
-  'correo_de_mi_primo_1@example.com',
-  'correo_de_mi_primo_2@example.com',
-  'correo_de_mi_papa@example.com'
+  'haroldortiz1925@gmail.com',
+  'johnperdomo88@gmail.com',
+  'edfabian95@gmail.com'
 );
 
 -- Make sure deleting a user from Auth also removes their profile row, so
