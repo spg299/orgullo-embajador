@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import AuthModal from "@/components/auth/AuthModal";
-import { CloseIcon, MenuIcon, WhatsAppIcon } from "@/components/ui/Icons";
+import { CloseIcon, MenuIcon } from "@/components/ui/Icons";
 import { siteSettings as defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
 
 const links = [
@@ -20,8 +20,8 @@ const links = [
 const ADMIN_LINK = { href: "/admin", label: "Panel de administración" };
 
 // Staggered items: the nav links (+1 more when the admin link is shown) +
-// the WhatsApp button + the login/logout button. Kept in sync with the JSX
-// below so open/close stagger delays line up in both directions.
+// the login/logout button. Kept in sync with the JSX below so open/close
+// stagger delays line up in both directions.
 const MOBILE_STAGGER_MS = 70;
 const MOBILE_ITEM_TRANSITION =
   "transition-all duration-[450ms] ease-[cubic-bezier(0.16,1,0.3,1)]";
@@ -42,7 +42,7 @@ export default function Navbar() {
   }, []);
 
   const navLinks = isAdmin ? [...links, ADMIN_LINK] : links;
-  const mobileItemCount = navLinks.length + 2;
+  const mobileItemCount = navLinks.length + 1;
 
   const firstName = (user?.user_metadata?.full_name as string | undefined)?.split(" ")[0];
 
@@ -78,14 +78,6 @@ export default function Navbar() {
           </nav>
 
           <div className="hidden items-center gap-3 lg:flex">
-            <Button
-              variant="whatsapp"
-              size="sm"
-              icon={<WhatsAppIcon className="h-4 w-4" />}
-            >
-              WhatsApp
-            </Button>
-
             {!loading && user ? (
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium text-navy-800">
@@ -143,22 +135,6 @@ export default function Navbar() {
               <div className="mt-2 flex flex-col gap-2 px-1">
                 <div
                   style={mobileItemStyle(open, navLinks.length, mobileItemCount)}
-                  className={`${MOBILE_ITEM_TRANSITION} ${
-                    open ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"
-                  }`}
-                >
-                  <Button
-                    variant="whatsapp"
-                    size="sm"
-                    icon={<WhatsAppIcon className="h-4 w-4" />}
-                    tabIndex={open ? 0 : -1}
-                  >
-                    WhatsApp
-                  </Button>
-                </div>
-
-                <div
-                  style={mobileItemStyle(open, navLinks.length + 1, mobileItemCount)}
                   className={`flex flex-col gap-2 ${MOBILE_ITEM_TRANSITION} ${
                     open ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"
                   }`}
