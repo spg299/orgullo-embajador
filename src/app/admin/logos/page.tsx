@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import Button from "@/components/ui/Button";
 import { TrashIcon, UploadIcon } from "@/components/ui/Icons";
+import { ConfirmDialog } from "@/components/ui/admin/ConfirmDialog";
+import { Skeleton } from "@/components/ui/admin/Skeleton";
+import { useToast } from "@/components/ui/admin/Toast";
 
 type Folder = "site" | "millonarios" | "rivales";
 
@@ -20,6 +23,7 @@ interface LogoItem {
 }
 
 export default function AdminLogosPage() {
+  const toast = useToast();
   const [items, setItems] = useState<Record<Folder, LogoItem[]>>({
     site: [],
     millonarios: [],
@@ -29,6 +33,8 @@ export default function AdminLogosPage() {
   const [uploadingFolder, setUploadingFolder] = useState<Folder | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copiedPath, setCopiedPath] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<LogoItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingFolder = useRef<Folder>("rivales");
 
@@ -92,27 +98,35 @@ export default function AdminLogosPage() {
 
     if (res.ok) {
       refreshAll();
+      toast.success("Logo subido correctamente.");
     } else {
-      setError(body.error ?? "No se pudo subir el logo.");
+      const message = body.error ?? "No se pudo subir el logo.";
+      setError(message);
+      toast.error(message);
     }
   }
 
-  async function handleDelete(item: LogoItem) {
-    if (!confirm("¿Eliminar este logo? Esta acción no se puede deshacer.")) return;
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    setDeleting(true);
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData.session?.access_token;
 
     const res = await fetch("/api/admin/logos", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, path: item.path }),
+      body: JSON.stringify({ accessToken, path: pendingDelete.path }),
     });
 
-    if (res.ok) refreshAll();
-    else {
+    setDeleting(false);
+    if (res.ok) {
+      refreshAll();
+      toast.success("Logo eliminado.");
+    } else {
       const body = await res.json().catch(() => ({}));
-      alert(body.error ?? "No se pudo eliminar el logo.");
+      toast.error(body.error ?? "No se pudo eliminar el logo.");
     }
+    setPendingDelete(null);
   }
 
   async function copyUrl(item: LogoItem) {
@@ -122,14 +136,14 @@ export default function AdminLogosPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <h1 className="font-display text-2xl font-extrabold tracking-tight text-navy-950">Logos</h1>
-      <p className="mt-1 text-sm font-medium text-navy-700/60">
+    <div className="mx-auto max-w-5xl">
+      <h1 className="font-display text-2xl font-extrabold tracking-tight text-admin-text">Logos</h1>
+      <p className="mt-1 text-sm font-medium text-admin-text-muted">
         Sube y administra el logo del sitio, el escudo de Millonarios y los escudos de los
         rivales. Copia la URL para usarla en Partidos.
       </p>
 
-      {error && <p className="mt-4 text-sm text-rose-600">{error}</p>}
+      {error && <p className="mt-4 text-sm text-rose-500">{error}</p>}
 
       <input
         ref={fileInputRef}
@@ -148,10 +162,10 @@ export default function AdminLogosPage() {
           <div key={folder.id}>
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="font-display text-lg font-bold tracking-tight text-navy-950">
+                <h2 className="font-display text-lg font-bold tracking-tight text-admin-text">
                   {folder.label}
                 </h2>
-                <p className="text-sm font-medium text-navy-700/60">{folder.hint}</p>
+                <p className="text-sm font-medium text-admin-text-muted">{folder.hint}</p>
               </div>
               <Button
                 variant="secondary"
@@ -166,20 +180,24 @@ export default function AdminLogosPage() {
 
             <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
               {loading ? (
-                <p className="text-sm font-medium text-navy-700/60">Cargando...</p>
+                <>
+                  <Skeleton className="h-28 w-full rounded-admin-lg" />
+                  <Skeleton className="h-28 w-full rounded-admin-lg" />
+                  <Skeleton className="h-28 w-full rounded-admin-lg" />
+                </>
               ) : items[folder.id].length === 0 ? (
-                <p className="text-sm font-medium text-navy-700/60">Aún no hay logos aquí.</p>
+                <p className="text-sm font-medium text-admin-text-muted">Aún no hay logos aquí.</p>
               ) : (
                 items[folder.id].map((item) => (
                   <div
                     key={item.path}
-                    className="group relative flex flex-col items-center gap-2 rounded-2xl border border-navy-900/8 bg-white p-3 shadow-card"
+                    className="group relative flex flex-col items-center gap-2 rounded-admin-lg border border-admin-border bg-admin-surface p-3 shadow-admin-xs"
                   >
                     <button
                       type="button"
                       aria-label="Eliminar"
-                      onClick={() => handleDelete(item)}
-                      className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white text-rose-600 opacity-0 shadow-card transition-opacity group-hover:opacity-100"
+                      onClick={() => setPendingDelete(item)}
+                      className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-admin-surface text-rose-600 opacity-0 shadow-admin-xs transition-opacity group-hover:opacity-100"
                     >
                       <TrashIcon className="h-3.5 w-3.5" />
                     </button>
@@ -203,6 +221,17 @@ export default function AdminLogosPage() {
           </div>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Eliminar logo"
+        description="¿Eliminar este logo? Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        destructive
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

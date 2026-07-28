@@ -3,7 +3,16 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { supabase } from "@/lib/supabase/client";
 import Button from "@/components/ui/Button";
-import { PencilIcon, TrashIcon, UploadIcon } from "@/components/ui/Icons";
+import { PencilIcon, TrashIcon, UploadIcon, SearchIcon } from "@/components/ui/Icons";
+import { useDataTable } from "@/components/ui/admin/useDataTable";
+import { Dialog } from "@/components/ui/admin/Dialog";
+import { ConfirmDialog } from "@/components/ui/admin/ConfirmDialog";
+import { Input } from "@/components/ui/admin/Input";
+import { Textarea } from "@/components/ui/admin/Textarea";
+import { Checkbox } from "@/components/ui/admin/Checkbox";
+import { Badge } from "@/components/ui/admin/Badge";
+import { SkeletonCard } from "@/components/ui/admin/Skeleton";
+import { useToast } from "@/components/ui/admin/Toast";
 
 interface TestimonialRow {
   id: string;
@@ -23,13 +32,22 @@ const emptyTestimonial: Omit<TestimonialRow, "id"> = {
 };
 
 export default function AdminTestimonialsPage() {
+  const toast = useToast();
   const [items, setItems] = useState<TestimonialRow[] | null>(null);
   const [editing, setEditing] = useState<Partial<TestimonialRow> | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<TestimonialRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const loading = items === null;
+
+  const table = useDataTable<TestimonialRow>({
+    data: items ?? [],
+    searchableFields: ["name", "message"],
+    initialSort: { field: "sort_order", direction: "asc" },
+  });
 
   async function fetchItems(): Promise<TestimonialRow[]> {
     const { data, error } = await supabase
@@ -67,19 +85,24 @@ export default function AdminTestimonialsPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("¿Eliminar este testimonio?")) return;
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    setDeleting(true);
     const accessToken = await getAccessToken();
     const res = await fetch("/api/admin/testimonials", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, id }),
+      body: JSON.stringify({ accessToken, id: pendingDelete.id }),
     });
-    if (res.ok) fetchItems().then(setItems);
-    else {
+    setDeleting(false);
+    if (res.ok) {
+      fetchItems().then(setItems);
+      toast.success("Testimonio eliminado.");
+    } else {
       const body = await res.json().catch(() => ({}));
-      alert(body.error ?? "No se pudo eliminar.");
+      toast.error(body.error ?? "No se pudo eliminar.");
     }
+    setPendingDelete(null);
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -99,40 +122,45 @@ export default function AdminTestimonialsPage() {
     if (res.ok) {
       setEditing(null);
       fetchItems().then(setItems);
+      toast.success("Testimonio guardado correctamente.");
     } else {
       const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "No se pudo guardar el testimonio.");
+      const message = body.error ?? "No se pudo guardar el testimonio.";
+      setError(message);
+      toast.error(message);
     }
   }
 
   async function toggleActive(item: TestimonialRow) {
     const accessToken = await getAccessToken();
-    await fetch("/api/admin/testimonials", {
+    const res = await fetch("/api/admin/testimonials", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ accessToken, testimonial: { ...item, active: !item.active } }),
     });
     fetchItems().then(setItems);
+    if (res.ok) toast.success(item.active ? "Testimonio desactivado." : "Testimonio activado.");
   }
 
-  const itemList = items ?? [];
+  const itemList = table.filteredData;
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="flex items-center justify-between">
+    <div className="mx-auto max-w-5xl">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight text-navy-950">
+          <h1 className="font-display text-2xl font-extrabold tracking-tight text-admin-text">
             Testimonios
           </h1>
-          <p className="mt-1 text-sm font-medium text-navy-700/60">
+          <p className="mt-1 text-sm font-medium text-admin-text-muted">
             Agrega, edita, elimina y activa/desactiva testimonios de hinchas.
           </p>
         </div>
         <Button
           variant="primary"
           size="sm"
+          className="self-start sm:self-auto"
           onClick={() => {
-            setEditing({ ...emptyTestimonial, sort_order: itemList.length + 1 });
+            setEditing({ ...emptyTestimonial, sort_order: (items?.length ?? 0) + 1 });
             setError(null);
           }}
         >
@@ -140,16 +168,29 @@ export default function AdminTestimonialsPage() {
         </Button>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+      <div className="relative mt-6 max-w-xs">
+        <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-text-muted" />
+        <input
+          value={table.search}
+          onChange={(e) => table.setSearch(e.target.value)}
+          placeholder="Buscar por nombre o mensaje..."
+          className="w-full rounded-admin-md border border-admin-border bg-admin-surface py-2 pl-9 pr-3 text-sm text-admin-text placeholder:text-admin-text-muted/60 focus:border-royal-400 focus:outline-none focus:ring-2 focus:ring-royal-400/40"
+        />
+      </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
         {loading ? (
-          <p className="text-sm font-medium text-navy-700/60">Cargando...</p>
+          <>
+            <SkeletonCard />
+            <SkeletonCard />
+          </>
         ) : itemList.length === 0 ? (
-          <p className="text-sm font-medium text-navy-700/60">Aún no hay testimonios.</p>
+          <p className="text-sm font-medium text-admin-text-muted">Aún no hay testimonios.</p>
         ) : (
           itemList.map((item) => (
             <div
               key={item.id}
-              className="flex gap-4 rounded-3xl border border-navy-900/8 bg-white p-5 shadow-card"
+              className="flex gap-4 rounded-admin-xl border border-admin-border bg-admin-surface p-5 shadow-admin-xs"
             >
               {item.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -159,22 +200,18 @@ export default function AdminTestimonialsPage() {
                   className="h-14 w-14 shrink-0 rounded-full object-cover"
                 />
               ) : (
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-royal-100 font-display font-bold text-royal-500">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-royal-100 font-display font-bold text-royal-500 dark:bg-royal-400/15">
                   {item.name.slice(0, 1)}
                 </div>
               )}
               <div className="flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-display font-bold text-navy-950">{item.name}</p>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                      item.active ? "bg-emerald-100 text-emerald-700" : "bg-navy-900/5 text-navy-700/50"
-                    }`}
-                  >
+                  <p className="font-display font-bold text-admin-text">{item.name}</p>
+                  <Badge variant={item.active ? "success" : "neutral"}>
                     {item.active ? "Activo" : "Inactivo"}
-                  </span>
+                  </Badge>
                 </div>
-                <p className="mt-1 text-sm text-navy-700/70">{item.message}</p>
+                <p className="mt-1 text-sm text-admin-text-muted">{item.message}</p>
                 <div className="mt-3 flex items-center gap-2">
                   <button
                     type="button"
@@ -190,15 +227,15 @@ export default function AdminTestimonialsPage() {
                       setEditing(item);
                       setError(null);
                     }}
-                    className="flex h-7 w-7 items-center justify-center rounded-full text-navy-700 hover:bg-royal-50"
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-admin-text-muted transition-colors hover:bg-admin-bg hover:text-admin-text"
                   >
                     <PencilIcon className="h-3.5 w-3.5" />
                   </button>
                   <button
                     type="button"
                     aria-label="Eliminar"
-                    onClick={() => handleDelete(item.id)}
-                    className="flex h-7 w-7 items-center justify-center rounded-full text-rose-600 hover:bg-rose-50"
+                    onClick={() => setPendingDelete(item)}
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-rose-600 transition-colors hover:bg-rose-50 dark:hover:bg-rose-500/10"
                   >
                     <TrashIcon className="h-3.5 w-3.5" />
                   </button>
@@ -209,92 +246,87 @@ export default function AdminTestimonialsPage() {
         )}
       </div>
 
-      {editing && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-navy-950/60 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl border border-navy-900/8 bg-white p-6 shadow-soft sm:p-8">
-            <h2 className="font-display text-xl font-bold tracking-tight text-navy-950">
-              {editing.id ? "Editar testimonio" : "Nuevo testimonio"}
-            </h2>
+      <Dialog
+        open={editing !== null}
+        onClose={() => setEditing(null)}
+        title={editing?.id ? "Editar testimonio" : "Nuevo testimonio"}
+      >
+        {editing && (
+          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+            <div className="flex items-center gap-4">
+              {editing.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={editing.image_url} alt="" className="h-16 w-16 rounded-full object-cover" />
+              ) : (
+                <div className="h-16 w-16 rounded-full bg-royal-50 dark:bg-royal-400/10" />
+              )}
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                icon={<UploadIcon className="h-4 w-4" />}
+                disabled={uploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {uploading ? "Subiendo..." : "Subir imagen"}
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleUpload(file);
+                }}
+              />
+            </div>
 
-            <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
-              <div className="flex items-center gap-4">
-                {editing.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={editing.image_url}
-                    alt=""
-                    className="h-16 w-16 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="h-16 w-16 rounded-full bg-royal-50" />
-                )}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  icon={<UploadIcon className="h-4 w-4" />}
-                  disabled={uploading}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {uploading ? "Subiendo..." : "Subir imagen"}
-                </Button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleUpload(file);
-                  }}
-                />
-              </div>
+            <Input
+              label="Nombre"
+              required
+              value={editing.name ?? ""}
+              onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+            />
 
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-navy-900/80">Nombre</span>
-                <input
-                  required
-                  value={editing.name ?? ""}
-                  onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                  className="rounded-xl border border-navy-900/12 px-4 py-2.5 text-sm"
-                />
-              </label>
+            <Textarea
+              label="Testimonio"
+              required
+              rows={4}
+              value={editing.message ?? ""}
+              onChange={(e) => setEditing({ ...editing, message: e.target.value })}
+            />
 
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-navy-900/80">Testimonio</span>
-                <textarea
-                  required
-                  rows={4}
-                  value={editing.message ?? ""}
-                  onChange={(e) => setEditing({ ...editing, message: e.target.value })}
-                  className="rounded-xl border border-navy-900/12 px-4 py-2.5 text-sm"
-                />
-              </label>
+            <Checkbox
+              label="Activo (visible)"
+              checked={editing.active ?? true}
+              onChange={(e) => setEditing({ ...editing, active: e.target.checked })}
+            />
 
-              <label className="flex items-center gap-2.5">
-                <input
-                  type="checkbox"
-                  checked={editing.active ?? true}
-                  onChange={(e) => setEditing({ ...editing, active: e.target.checked })}
-                  className="h-4 w-4 rounded border-navy-900/25 text-royal-500"
-                />
-                <span className="text-sm font-medium text-navy-900/80">Activo (visible)</span>
-              </label>
+            {error && <p className="text-sm text-rose-500">{error}</p>}
 
-              {error && <p className="text-sm text-rose-600">{error}</p>}
+            <div className="mt-2 flex gap-3">
+              <Button type="submit" variant="primary" className="flex-1" disabled={saving}>
+                {saving ? "Guardando..." : "Guardar"}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        )}
+      </Dialog>
 
-              <div className="mt-2 flex gap-3">
-                <Button type="submit" variant="primary" className="flex-1" disabled={saving}>
-                  {saving ? "Guardando..." : "Guardar"}
-                </Button>
-                <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
-                  Cancelar
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Eliminar testimonio"
+        description="¿Eliminar este testimonio? Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        destructive
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }
