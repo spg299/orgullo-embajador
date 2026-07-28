@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
 import WhatsAppFloatingButton from "@/components/ui/WhatsAppFloatingButton";
+import { SITE_URL } from "@/lib/email/config";
 import "./globals.css";
 
 const geist = Geist({
@@ -10,10 +11,34 @@ const geist = Geist({
   display: "swap",
 });
 
+const TITLE = "Orgullo Embajador | Boletas oficiales Millonarios FC";
+const DESCRIPTION =
+  "Compra tus boletas para los partidos de Millonarios FC de forma rápida, segura y garantizada.";
+
 export const metadata: Metadata = {
-  title: "Orgullo Embajador | Boletas oficiales Millonarios FC",
-  description:
-    "Compra tus boletas para los partidos de Millonarios FC de forma rápida, segura y garantizada.",
+  metadataBase: new URL(SITE_URL),
+  title: TITLE,
+  description: DESCRIPTION,
+  applicationName: "Orgullo Embajador",
+  keywords: ["Millonarios FC", "boletas", "entradas", "El Campín", "Liga BetPlay", "Orgullo Embajador"],
+  authors: [{ name: "Orgullo Embajador" }],
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: SITE_URL,
+    siteName: "Orgullo Embajador",
+    locale: "es_CO",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0a2f8c",
 };
 
 export default function RootLayout({
