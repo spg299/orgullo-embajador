@@ -1,23 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import Container from "@/components/ui/Container";
 import CrestBadge from "@/components/ui/CrestBadge";
-import Button from "@/components/ui/Button";
+import MatchCtaButton from "@/components/home/MatchCtaButton";
 import { CalendarIcon, ClockIcon, MapPinIcon } from "@/components/ui/Icons";
 import { homeMatches, MILLONARIOS_CREST, type HomeMatch, type MatchStatus } from "@/data/homeMatches";
 
 const statusConfig: Record<MatchStatus, { label: string; className: string }> = {
-  agotado: {
+  sold_out: {
     label: "SOLD OUT",
     className: "border-rose-500/30 bg-rose-500/15 text-rose-300",
   },
-  proximamente: {
+  upcoming: {
     label: "Próximamente",
     className: "border-gold-400/30 bg-gold-500/15 text-gold-300",
   },
-  disponible: {
+  available: {
     label: "Disponible",
     className: "border-emerald-500/30 bg-emerald-500/15 text-emerald-300",
   },
@@ -101,21 +100,11 @@ function MatchCalendarCard({ match, delayMs }: { match: HomeMatch; delayMs: numb
       </div>
 
       <div className="mt-6">
-        {match.status === "disponible" ? (
-          <Link href={match.buyLink ?? `/comprar?match=${match.id}`} className="block">
-            <Button variant="primary" className="w-full">
-              Comprar boletas
-            </Button>
-          </Link>
-        ) : (
-          <button
-            type="button"
-            disabled
-            className="w-full cursor-not-allowed rounded-full border border-white/10 bg-white/5 px-6 py-3 text-sm font-bold tracking-tight text-white/40"
-          >
-            {match.status === "agotado" ? "Agotado" : "Próximamente"}
-          </button>
-        )}
+        <MatchCtaButton
+          status={match.status}
+          href={match.buyLink ?? `/comprar?match=${match.id}`}
+          className="w-full"
+        />
       </div>
     </div>
   );

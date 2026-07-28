@@ -1,4 +1,4 @@
-export type MatchStatus = "agotado" | "proximamente" | "disponible";
+export type MatchStatus = "available" | "upcoming" | "sold_out";
 
 export interface HomeMatch {
   id: string;
@@ -18,10 +18,13 @@ export interface HomeMatch {
 // CRESTS_DIR below for the rest of the naming convention).
 export const MILLONARIOS_CREST = "/images/crests/millonarios.png";
 
-// Edit this array to update the home-match calendar. To open sales for a
-// match, flip its status from "proximamente" to "disponible" (add a
-// buyLink); to close sales, flip it to "agotado". No component code needs
-// to change.
+// Single source of truth for every match card on the site (Hero, calendar,
+// and — via getMatchById in data/matches.ts — checkout). Edit this array to
+// update a fixture: to open sales for a match, flip its status from
+// "upcoming" to "available" (optionally add a buyLink); to close sales, flip
+// it to "sold_out". No component code needs to change — Hero and the
+// calendar both derive their button label/enabled state and badge from
+// `status` alone (see MatchCtaButton).
 //
 // To add a new rival's crest: drop the image at
 // public/images/crests/<slug>.png and set rivalCrest to that path. Until
@@ -36,7 +39,7 @@ export const homeMatches: HomeMatch[] = [
     date: "Sábado, 25 de julio de 2026",
     time: "6:10 p.m.",
     stadium: "Estadio El Campín",
-    status: "agotado",
+    status: "sold_out",
   },
   {
     id: "millonarios-vs-deportivo-pasto",
@@ -46,7 +49,7 @@ export const homeMatches: HomeMatch[] = [
     date: "Martes, 4 de agosto de 2026",
     time: "8:20 p.m.",
     stadium: "Estadio El Campín",
-    status: "disponible",
+    status: "available",
   },
   {
     id: "millonarios-vs-deportivo-cali",
@@ -56,7 +59,7 @@ export const homeMatches: HomeMatch[] = [
     date: "Lunes, 17 de agosto de 2026",
     time: "6:10 p.m.",
     stadium: "Estadio El Campín",
-    status: "proximamente",
+    status: "upcoming",
   },
   {
     id: "millonarios-vs-inter-bogota",
@@ -66,7 +69,7 @@ export const homeMatches: HomeMatch[] = [
     date: "Domingo, 30 de agosto de 2026",
     time: "6:15 p.m.",
     stadium: "Estadio El Campín",
-    status: "proximamente",
+    status: "upcoming",
   },
   {
     id: "millonarios-vs-boyaca-chico",
@@ -76,7 +79,7 @@ export const homeMatches: HomeMatch[] = [
     date: "Sábado, 19 de septiembre de 2026",
     time: "8:15 p.m.",
     stadium: "Estadio El Campín",
-    status: "proximamente",
+    status: "upcoming",
   },
   {
     id: "millonarios-vs-once-caldas",
@@ -86,7 +89,7 @@ export const homeMatches: HomeMatch[] = [
     date: "Martes, 13 de octubre de 2026",
     time: "8:00 p.m.",
     stadium: "Estadio El Campín",
-    status: "proximamente",
+    status: "upcoming",
   },
   {
     id: "millonarios-vs-jaguares",
@@ -96,7 +99,7 @@ export const homeMatches: HomeMatch[] = [
     date: "Sábado, 17 de octubre de 2026",
     time: "2:00 p.m.",
     stadium: "Estadio El Campín",
-    status: "proximamente",
+    status: "upcoming",
   },
   {
     id: "millonarios-vs-america-de-cali",
@@ -106,7 +109,7 @@ export const homeMatches: HomeMatch[] = [
     date: "Lunes, 26 de octubre de 2026",
     time: "8:00 p.m.",
     stadium: "Estadio El Campín",
-    status: "proximamente",
+    status: "upcoming",
   },
   {
     id: "millonarios-vs-alianza-fc",
@@ -116,6 +119,6 @@ export const homeMatches: HomeMatch[] = [
     date: "Domingo, 8 de noviembre de 2026",
     time: "3:30 p.m.",
     stadium: "Estadio El Campín",
-    status: "proximamente",
+    status: "upcoming",
   },
 ];

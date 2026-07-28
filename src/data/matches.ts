@@ -1,4 +1,4 @@
-import { homeMatches, MILLONARIOS_CREST } from "./homeMatches";
+import { homeMatches, MILLONARIOS_CREST, type HomeMatch } from "./homeMatches";
 
 export interface Match {
   id: string;
@@ -14,92 +14,30 @@ export interface Match {
   time: string;
   stadium: string;
   city: string;
-  featured?: boolean;
 }
 
-export const matches: Match[] = [
-  {
-    id: "millonarios-vs-bucaramanga",
+// homeMatches (data/homeMatches.ts) is the single source of truth for every
+// fixture — Hero, the calendar, and checkout (via getMatchById below) all
+// read from it, so editing a match's status/name/date/crest there updates
+// every view with no other code changes.
+function toMatch(homeMatch: HomeMatch): Match {
+  return {
+    id: homeMatch.id,
     home: "Millonarios",
-    away: "Bucaramanga",
+    away: homeMatch.rival,
     homeInitial: "M",
-    awayInitial: "B",
+    awayInitial: homeMatch.rivalInitial,
     homeCrest: MILLONARIOS_CREST,
-    awayCrest: "/images/crests/bucaramanga.png",
+    awayCrest: homeMatch.rivalCrest,
     competition: "Liga BetPlay Dimayor",
-    date: "Domingo, 9 de agosto de 2026",
-    time: "4:00 p.m.",
-    stadium: "Estadio El Campín",
+    date: homeMatch.date,
+    time: homeMatch.time,
+    stadium: homeMatch.stadium,
     city: "Bogotá D.C.",
-    featured: true,
-  },
-  {
-    id: "millonarios-vs-nacional",
-    home: "Millonarios",
-    away: "Atlético Nacional",
-    homeInitial: "M",
-    awayInitial: "N",
-    competition: "Liga BetPlay Dimayor",
-    date: "Sábado, 16 de agosto de 2026",
-    time: "6:15 p.m.",
-    stadium: "Estadio El Campín",
-    city: "Bogotá D.C.",
-    featured: true,
-  },
-  {
-    id: "millonarios-vs-junior",
-    home: "Millonarios",
-    away: "Junior",
-    homeInitial: "M",
-    awayInitial: "J",
-    competition: "Liga BetPlay Dimayor",
-    date: "Sábado, 23 de agosto de 2026",
-    time: "8:00 p.m.",
-    stadium: "Estadio El Campín",
-    city: "Bogotá D.C.",
-    featured: true,
-  },
-  {
-    id: "millonarios-vs-tolima",
-    home: "Millonarios",
-    away: "Deportes Tolima",
-    homeInitial: "M",
-    awayInitial: "T",
-    competition: "Liga BetPlay Dimayor",
-    date: "Domingo, 30 de agosto de 2026",
-    time: "2:30 p.m.",
-    stadium: "Estadio El Campín",
-    city: "Bogotá D.C.",
-  },
-];
-
-export const featuredMatches = matches.filter((match) => match.featured);
-export const upcomingMatches = matches.slice(0, 3);
+  };
+}
 
 export function getMatchById(id: string | undefined): Match {
-  const fromMatches = matches.find((match) => match.id === id);
-  if (fromMatches) return fromMatches;
-
-  // Falls back to the home-match calendar so links generated from that
-  // single source of truth (Hero, calendar cards) always resolve to the
-  // right match on the purchase page too.
-  const fromHomeMatches = homeMatches.find((match) => match.id === id);
-  if (fromHomeMatches) {
-    return {
-      id: fromHomeMatches.id,
-      home: "Millonarios",
-      away: fromHomeMatches.rival,
-      homeInitial: "M",
-      awayInitial: fromHomeMatches.rivalInitial,
-      homeCrest: MILLONARIOS_CREST,
-      awayCrest: fromHomeMatches.rivalCrest,
-      competition: "Liga BetPlay Dimayor",
-      date: fromHomeMatches.date,
-      time: fromHomeMatches.time,
-      stadium: fromHomeMatches.stadium,
-      city: "Bogotá D.C.",
-    };
-  }
-
-  return matches[0];
+  const homeMatch = homeMatches.find((match) => match.id === id) ?? homeMatches[0];
+  return toMatch(homeMatch);
 }

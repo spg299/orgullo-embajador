@@ -40,6 +40,7 @@ export default function WhatsAppCheckoutBox({
   function handleFinalize() {
     const totalQuantity = selections.reduce((sum, s) => sum + s.quantity, 0);
     const buyerName = user?.user_metadata?.full_name as string | undefined;
+    const buyerEmail = user?.email;
 
     const lines = [
       "Hola, quiero finalizar mi compra de boletas:",
@@ -54,8 +55,10 @@ export default function WhatsAppCheckoutBox({
       `Total: ${formatCOP(total)}`,
     ];
 
-    if (buyerName) {
-      lines.push("", `Nombre: ${buyerName}`);
+    if (buyerName || buyerEmail) {
+      lines.push("");
+      if (buyerName) lines.push(`Nombre: ${buyerName}`);
+      if (buyerEmail) lines.push(`Correo: ${buyerEmail}`);
     }
 
     const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(lines.join("\n"))}`;

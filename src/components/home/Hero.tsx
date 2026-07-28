@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import Container from "@/components/ui/Container";
-import Button from "@/components/ui/Button";
 import CrestBadge from "@/components/ui/CrestBadge";
+import MatchCtaButton from "@/components/home/MatchCtaButton";
 import { CalendarIcon, MapPinIcon, ArrowRightIcon } from "@/components/ui/Icons";
 import { homeMatches, MILLONARIOS_CREST } from "@/data/homeMatches";
 
@@ -15,7 +15,7 @@ const heroVideos = [
 
 // Same source of truth as the "Calendario de partidos de local" section:
 // the next matches that aren't sold out, in schedule order.
-const upcomingMatches = homeMatches.filter((m) => m.status !== "agotado").slice(0, 3);
+const upcomingMatches = homeMatches.filter((m) => m.status !== "sold_out").slice(0, 3);
 
 const AUTOPLAY_MS = 5000;
 const RESUME_DELAY_MS = 6000;
@@ -218,16 +218,13 @@ export default function Hero() {
                   </div>
 
                   <div className="mt-6">
-                    <Button
+                    <MatchCtaButton
+                      status={m.status}
                       href={m.buyLink ?? `/comprar?match=${m.id}`}
-                      variant="primary"
                       size="lg"
                       icon={<ArrowRightIcon className="h-4 w-4" />}
-                      iconPosition="right"
                       className="w-full sm:w-auto"
-                    >
-                      Comprar ahora
-                    </Button>
+                    />
                   </div>
                 </div>
               ))}
