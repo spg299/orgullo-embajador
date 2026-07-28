@@ -6,7 +6,7 @@ export interface Tier {
   description: string;
   color: string;
   price: number;
-  availability: "alta" | "media" | "baja";
+  availability: "alta" | "media" | "baja" | "agotado";
 }
 
 // Static fallback — used until fetchTiers() resolves, and if the tiers
@@ -59,6 +59,7 @@ export const availabilityLabels: Record<Tier["availability"], string> = {
   alta: "Alta disponibilidad",
   media: "Disponibilidad media",
   baja: "Últimas boletas",
+  agotado: "Agotado",
 };
 
 interface TierRow {

@@ -12,8 +12,9 @@ import { ConfirmDialog } from "@/components/ui/admin/ConfirmDialog";
 import { Input } from "@/components/ui/admin/Input";
 import { Select } from "@/components/ui/admin/Select";
 import { useToast } from "@/components/ui/admin/Toast";
+import { Badge } from "@/components/ui/admin/Badge";
 
-type Availability = "alta" | "media" | "baja";
+type Availability = "alta" | "media" | "baja" | "agotado";
 
 interface TierRow {
   id: string;
@@ -39,6 +40,17 @@ const availabilityLabels: Record<Availability, string> = {
   alta: "Alta disponibilidad",
   media: "Disponibilidad media",
   baja: "Últimas boletas",
+  agotado: "Agotado",
+};
+
+const availabilityBadgeVariant: Record<
+  Availability,
+  "success" | "warning" | "info" | "danger"
+> = {
+  alta: "success",
+  media: "warning",
+  baja: "info",
+  agotado: "danger",
 };
 
 // TEMPORARY DEBUG: surfaces the real Supabase/API error instead of a generic
@@ -167,7 +179,11 @@ export default function AdminPreciosPage() {
       key: "availability",
       header: "Disponibilidad",
       sortable: true,
-      render: (tier) => availabilityLabels[tier.availability],
+      render: (tier) => (
+        <Badge variant={availabilityBadgeVariant[tier.availability]}>
+          {availabilityLabels[tier.availability]}
+        </Badge>
+      ),
     },
   ];
 
@@ -276,6 +292,7 @@ export default function AdminPreciosPage() {
               <option value="alta">Alta disponibilidad</option>
               <option value="media">Disponibilidad media</option>
               <option value="baja">Últimas boletas</option>
+              <option value="agotado">Agotado</option>
             </Select>
 
             <Input

@@ -40,7 +40,9 @@ export default function PurchaseFlow({ match }: { match: Match }) {
     () =>
       effectiveTiers
         .map((tier) => ({ tier, quantity: quantities[tier.id] ?? 0 }))
-        .filter((selection) => selection.quantity > 0),
+        .filter(
+          (selection) => selection.quantity > 0 && selection.tier.availability !== "agotado",
+        ),
     [effectiveTiers, quantities],
   );
 
@@ -126,9 +128,10 @@ export default function PurchaseFlow({ match }: { match: Match }) {
                     key={tier.id}
                     tier={tier}
                     quantity={quantities[tier.id] ?? 0}
-                    onChange={(value) =>
-                      setQuantities((prev) => ({ ...prev, [tier.id]: value }))
-                    }
+                    onChange={(value) => {
+                      if (tier.availability === "agotado") return;
+                      setQuantities((prev) => ({ ...prev, [tier.id]: value }));
+                    }}
                   />
                 ))}
               </div>
