@@ -12,6 +12,15 @@ interface UseDataTableOptions<T> {
   pageSize?: number;
 }
 
+// Strips accents so "gomez" matches "Gómez" — expected behavior for a
+// Spanish-language admin UI with lots of accented names/places.
+function normalize(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
 function compareValues(a: unknown, b: unknown): number {
   if (typeof a === "number" && typeof b === "number") return a - b;
   if (typeof a === "boolean" && typeof b === "boolean") return Number(a) - Number(b);
@@ -49,9 +58,9 @@ export function useDataTable<T>({
 
   const filteredData = useMemo(() => {
     if (!search.trim()) return data;
-    const needle = search.trim().toLowerCase();
+    const needle = normalize(search.trim());
     return data.filter((row) =>
-      searchableFields.some((field) => String(row[field] ?? "").toLowerCase().includes(needle)),
+      searchableFields.some((field) => normalize(String(row[field] ?? "")).includes(needle)),
     );
   }, [data, search, searchableFields]);
 
