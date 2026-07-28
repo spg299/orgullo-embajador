@@ -5,6 +5,13 @@ import { supabase } from "@/lib/supabase/client";
 import Button from "@/components/ui/Button";
 import { PencilIcon, TrashIcon } from "@/components/ui/Icons";
 import { formatCOP } from "@/lib/format";
+import { DataTable, type DataTableColumn } from "@/components/ui/admin/DataTable";
+import { useDataTable } from "@/components/ui/admin/useDataTable";
+import { Dialog } from "@/components/ui/admin/Dialog";
+import { ConfirmDialog } from "@/components/ui/admin/ConfirmDialog";
+import { Input } from "@/components/ui/admin/Input";
+import { Select } from "@/components/ui/admin/Select";
+import { useToast } from "@/components/ui/admin/Toast";
 
 type Availability = "alta" | "media" | "baja";
 
@@ -51,12 +58,21 @@ async function describeError(res: Response): Promise<string> {
 }
 
 export default function AdminPreciosPage() {
+  const toast = useToast();
   const [tiers, setTiers] = useState<TierRow[] | null>(null);
   const [editing, setEditing] = useState<TierRow | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<TierRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const loading = tiers === null;
+
+  const table = useDataTable<TierRow>({
+    data: tiers ?? [],
+    searchableFields: ["name", "description"],
+    initialSort: { field: "sort_order", direction: "asc" },
+  });
 
   async function fetchTiers(): Promise<TierRow[]> {
     const { data, error } = await supabase.from("tiers").select("*").order("sort_order");
@@ -79,21 +95,26 @@ export default function AdminPreciosPage() {
     setError(null);
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm(`¿Eliminar la localidad "${id}"? Esta acción no se puede deshacer.`)) return;
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    setDeleting(true);
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData.session?.access_token;
     const res = await fetch("/api/admin/tiers", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, id }),
+      body: JSON.stringify({ accessToken, id: pendingDelete.id }),
     });
-    if (res.ok) fetchTiers().then(setTiers);
-    else {
+    setDeleting(false);
+    if (res.ok) {
+      fetchTiers().then(setTiers);
+      toast.success("Localidad eliminada.");
+    } else {
       const message = await describeError(res);
       console.error("DEBUG tiers delete failed:", res.status, message);
-      alert(message);
+      toast.error(message);
     }
+    setPendingDelete(null);
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -115,196 +136,184 @@ export default function AdminPreciosPage() {
     if (res.ok) {
       setEditing(null);
       fetchTiers().then(setTiers);
+      toast.success("Localidad guardada correctamente.");
     } else {
       const message = await describeError(res);
       console.error("DEBUG tiers save failed:", res.status, message);
       setError(message);
+      toast.error(message);
     }
   }
 
-  const tierList = tiers ?? [];
+  const columns: DataTableColumn<TierRow>[] = [
+    {
+      key: "name",
+      header: "Localidad",
+      sortable: true,
+      render: (tier) => (
+        <div className="flex items-center gap-2.5">
+          <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: tier.color }} />
+          <span className="font-semibold text-admin-text">{tier.name}</span>
+        </div>
+      ),
+    },
+    {
+      key: "price",
+      header: "Precio",
+      sortable: true,
+      render: (tier) => formatCOP(tier.price),
+    },
+    {
+      key: "availability",
+      header: "Disponibilidad",
+      sortable: true,
+      render: (tier) => availabilityLabels[tier.availability],
+    },
+  ];
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="flex items-center justify-between">
+    <div className="mx-auto max-w-5xl">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight text-navy-950">
+          <h1 className="font-display text-2xl font-extrabold tracking-tight text-admin-text">
             Precios
           </h1>
-          <p className="mt-1 text-sm font-medium text-navy-700/60">
+          <p className="mt-1 text-sm font-medium text-admin-text-muted">
             Crea, edita y elimina las localidades y sus precios.
           </p>
         </div>
-        <Button variant="primary" size="sm" onClick={openNew}>
+        <Button variant="primary" size="sm" onClick={openNew} className="self-start sm:self-auto">
           Nueva localidad
         </Button>
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-3xl border border-navy-900/8 bg-white shadow-card">
-        {loading ? (
-          <p className="p-6 text-sm font-medium text-navy-700/60">Cargando...</p>
-        ) : tierList.length === 0 ? (
-          <p className="p-6 text-sm font-medium text-navy-700/60">
-            Aún no hay localidades. Crea la primera, o ejecuta la migración SQL para importar las
-            existentes.
-          </p>
-        ) : (
-          <table className="w-full text-left text-sm">
-            <thead className="bg-royal-50/60 text-xs font-semibold uppercase tracking-wider text-navy-700/60">
-              <tr>
-                <th className="px-5 py-3">Localidad</th>
-                <th className="px-5 py-3">Precio</th>
-                <th className="px-5 py-3">Disponibilidad</th>
-                <th className="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-navy-900/5">
-              {tierList.map((tier) => (
-                <tr key={tier.id}>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <span
-                        className="h-3 w-3 shrink-0 rounded-full"
-                        style={{ backgroundColor: tier.color }}
-                      />
-                      <span className="font-semibold text-navy-950">{tier.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 text-navy-700/70">{formatCOP(tier.price)}</td>
-                  <td className="px-5 py-3 text-navy-700/70">
-                    {availabilityLabels[tier.availability]}
-                  </td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        aria-label="Editar"
-                        onClick={() => openEdit(tier)}
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-navy-700 hover:bg-royal-50"
-                      >
-                        <PencilIcon />
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Eliminar"
-                        onClick={() => handleDelete(tier.id)}
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-rose-600 hover:bg-rose-50"
-                      >
-                        <TrashIcon />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+      <div className="mt-6">
+        <DataTable
+          table={table}
+          keyField="id"
+          loading={loading}
+          emptyMessage="Aún no hay localidades. Crea la primera, o ejecuta la migración SQL para importar las existentes."
+          searchPlaceholder="Buscar por localidad..."
+          columns={columns}
+          renderActions={(tier) => (
+            <>
+              <button
+                type="button"
+                aria-label="Editar"
+                onClick={() => openEdit(tier)}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-admin-text-muted transition-colors hover:bg-admin-bg hover:text-admin-text"
+              >
+                <PencilIcon />
+              </button>
+              <button
+                type="button"
+                aria-label="Eliminar"
+                onClick={() => setPendingDelete(tier)}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-rose-600 transition-colors hover:bg-rose-50 dark:hover:bg-rose-500/10"
+              >
+                <TrashIcon />
+              </button>
+            </>
+          )}
+        />
       </div>
 
-      {editing && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-navy-950/60 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-navy-900/8 bg-white p-6 shadow-soft sm:p-8">
-            <h2 className="font-display text-xl font-bold tracking-tight text-navy-950">
-              {isNew ? "Nueva localidad" : `Editar: ${editing.name}`}
-            </h2>
+      <Dialog
+        open={editing !== null}
+        onClose={() => setEditing(null)}
+        title={isNew ? "Nueva localidad" : `Editar: ${editing?.name ?? ""}`}
+      >
+        {editing && (
+          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+            {isNew && (
+              <Input
+                label="ID (slug único, ej. tribuna-norte)"
+                required
+                value={editing.id}
+                onChange={(e) => setEditing({ ...editing, id: e.target.value })}
+              />
+            )}
 
-            <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
-              {isNew && (
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-navy-900/80">
-                    ID (slug único, ej. tribuna-norte)
-                  </span>
-                  <input
-                    required
-                    value={editing.id}
-                    onChange={(e) => setEditing({ ...editing, id: e.target.value })}
-                    className="w-full rounded-xl border border-navy-900/12 px-4 py-2.5 text-sm"
-                  />
-                </label>
-              )}
+            <Input
+              label="Localidad"
+              required
+              value={editing.name}
+              onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+            />
 
+            <Input
+              label="Descripción"
+              required
+              value={editing.description}
+              onChange={(e) => setEditing({ ...editing, description: e.target.value })}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Precio (COP)"
+                required
+                type="number"
+                min={0}
+                value={editing.price}
+                onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })}
+              />
               <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-navy-900/80">Localidad</span>
+                <span className="text-sm font-medium text-admin-text/80">Color</span>
                 <input
-                  required
-                  value={editing.name}
-                  onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                  className="rounded-xl border border-navy-900/12 px-4 py-2.5 text-sm"
+                  type="color"
+                  value={editing.color}
+                  onChange={(e) => setEditing({ ...editing, color: e.target.value })}
+                  className="h-[42px] w-full rounded-admin-md border border-admin-border bg-admin-surface px-2 py-1"
                 />
               </label>
+            </div>
 
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-navy-900/80">Descripción</span>
-                <input
-                  required
-                  value={editing.description}
-                  onChange={(e) => setEditing({ ...editing, description: e.target.value })}
-                  className="rounded-xl border border-navy-900/12 px-4 py-2.5 text-sm"
-                />
-              </label>
+            <Select
+              label="Disponibilidad"
+              value={editing.availability}
+              onChange={(e) => setEditing({ ...editing, availability: e.target.value as Availability })}
+            >
+              <option value="alta">Alta disponibilidad</option>
+              <option value="media">Disponibilidad media</option>
+              <option value="baja">Últimas boletas</option>
+            </Select>
 
-              <div className="grid grid-cols-2 gap-4">
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-navy-900/80">Precio (COP)</span>
-                  <input
-                    required
-                    type="number"
-                    min={0}
-                    value={editing.price}
-                    onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })}
-                    className="rounded-xl border border-navy-900/12 px-4 py-2.5 text-sm"
-                  />
-                </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-navy-900/80">Color</span>
-                  <input
-                    type="color"
-                    value={editing.color}
-                    onChange={(e) => setEditing({ ...editing, color: e.target.value })}
-                    className="h-[42px] w-full rounded-xl border border-navy-900/12 px-2 py-1"
-                  />
-                </label>
-              </div>
+            <Input
+              label="Orden"
+              type="number"
+              value={editing.sort_order}
+              onChange={(e) => setEditing({ ...editing, sort_order: Number(e.target.value) })}
+              className="w-32"
+            />
 
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-navy-900/80">Disponibilidad</span>
-                <select
-                  value={editing.availability}
-                  onChange={(e) =>
-                    setEditing({ ...editing, availability: e.target.value as Availability })
-                  }
-                  className="rounded-xl border border-navy-900/12 px-4 py-2.5 text-sm"
-                >
-                  <option value="alta">Alta disponibilidad</option>
-                  <option value="media">Disponibilidad media</option>
-                  <option value="baja">Últimas boletas</option>
-                </select>
-              </label>
+            {error && <p className="text-sm text-rose-500">{error}</p>}
 
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-navy-900/80">Orden</span>
-                <input
-                  type="number"
-                  value={editing.sort_order}
-                  onChange={(e) => setEditing({ ...editing, sort_order: Number(e.target.value) })}
-                  className="w-32 rounded-xl border border-navy-900/12 px-4 py-2.5 text-sm"
-                />
-              </label>
+            <div className="mt-2 flex gap-3">
+              <Button type="submit" variant="primary" className="flex-1" disabled={saving}>
+                {saving ? "Guardando..." : "Guardar"}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        )}
+      </Dialog>
 
-              {error && <p className="text-sm text-rose-600">{error}</p>}
-
-              <div className="mt-2 flex gap-3">
-                <Button type="submit" variant="primary" className="flex-1" disabled={saving}>
-                  {saving ? "Guardando..." : "Guardar"}
-                </Button>
-                <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
-                  Cancelar
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Eliminar localidad"
+        description={
+          pendingDelete
+            ? `¿Eliminar la localidad "${pendingDelete.name}"? Esta acción no se puede deshacer.`
+            : undefined
+        }
+        confirmLabel="Eliminar"
+        destructive
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }
