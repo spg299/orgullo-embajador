@@ -17,3 +17,10 @@ alter table public.testimonials drop constraint if exists testimonials_rating_ch
 alter table public.testimonials
   add constraint testimonials_rating_check
   check (rating between 1 and 5);
+
+-- Force PostgREST to pick up the new columns immediately. Without this,
+-- "Could not find the 'screenshot_url' column of 'testimonials' in the
+-- schema cache" can persist for a while after the ALTER TABLE above,
+-- since PostgREST caches the schema and doesn't always auto-detect DDL
+-- run through the SQL Editor.
+notify pgrst, 'reload schema';
