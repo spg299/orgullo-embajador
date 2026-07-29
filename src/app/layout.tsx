@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
 import WhatsAppFloatingButton from "@/components/ui/WhatsAppFloatingButton";
+import VisitTracker from "@/components/analytics/VisitTracker";
 import { SITE_URL } from "@/lib/email/config";
 import "./globals.css";
 
@@ -52,6 +53,7 @@ export default function RootLayout({
         <AuthProvider>
           {children}
           <WhatsAppFloatingButton />
+          <VisitTracker />
         </AuthProvider>
       </body>
     </html>

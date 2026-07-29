@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import Button from "@/components/ui/Button";
-import { UploadIcon, PencilIcon, TrashIcon } from "@/components/ui/Icons";
+import { UploadIcon, PencilIcon, TrashIcon, RefreshIcon } from "@/components/ui/Icons";
 import { siteSettings as defaultSiteSettings, type SiteSettings } from "@/data/siteSettings";
 import type { Advisor } from "@/data/advisors";
+import { isMaintenanceAllowed } from "@/lib/maintenanceAccess";
 import { Input } from "@/components/ui/admin/Input";
 import { Select } from "@/components/ui/admin/Select";
 import { Checkbox } from "@/components/ui/admin/Checkbox";
@@ -45,6 +47,7 @@ const LOGO_FIELDS: { key: "site_logo_url" | "millonarios_crest_url"; label: stri
 
 export default function AdminConfiguracionPage() {
   const toast = useToast();
+  const { user } = useAuth();
   const [settings, setSettings] = useState<SiteSettings>(defaultSiteSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -64,6 +67,28 @@ export default function AdminConfiguracionPage() {
   const [deletingAdvisor, setDeletingAdvisor] = useState(false);
   const advisorAvatarInputRef = useRef<HTMLInputElement>(null);
   const advisorsLoading = advisors === null;
+
+  const [showRecalcConfirm, setShowRecalcConfirm] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
+  const canRecalculate = isMaintenanceAllowed(user?.email);
+
+  async function handleRecalculate() {
+    setRecalculating(true);
+    const accessToken = await getAdvisorsAccessToken();
+    const res = await fetch("/api/admin/maintenance/recalculate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accessToken }),
+    });
+    setRecalculating(false);
+    setShowRecalcConfirm(false);
+    if (res.ok) {
+      toast.success("Dashboard recalculado correctamente.");
+    } else {
+      const body = await res.json().catch(() => ({}));
+      toast.error(body.error ?? "No se pudo recalcular el Dashboard.");
+    }
+  }
 
   async function getAdvisorsAccessToken() {
     const { data } = await supabase.auth.getSession();
@@ -554,6 +579,38 @@ export default function AdminConfiguracionPage() {
         loading={deletingAdvisor}
         onConfirm={confirmDeleteAdvisor}
         onCancel={() => setPendingDeleteAdvisor(null)}
+      />
+
+      {canRecalculate && (
+        <div className="mt-8 rounded-admin-xl border border-rose-200 bg-rose-50/50 p-6 shadow-admin-xs dark:border-rose-500/20 dark:bg-rose-500/5 sm:p-8">
+          <h2 className="font-display text-xl font-bold tracking-tight text-admin-text">
+            Mantenimiento
+          </h2>
+          <p className="mt-1 text-sm font-medium text-admin-text-muted">
+            Herramientas administrativas para recalcular estadísticas del sistema.
+          </p>
+
+          <Button
+            variant="destructive"
+            size="sm"
+            className="mt-5"
+            icon={<RefreshIcon className="h-4 w-4" />}
+            onClick={() => setShowRecalcConfirm(true)}
+          >
+            Recalcular Dashboard
+          </Button>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={showRecalcConfirm}
+        title="¿Recalcular estadísticas?"
+        description="Esta acción volverá a calcular todas las métricas del Dashboard utilizando la información almacenada en la base de datos."
+        confirmLabel="Recalcular"
+        destructive
+        loading={recalculating}
+        onConfirm={handleRecalculate}
+        onCancel={() => setShowRecalcConfirm(false)}
       />
     </div>
   );

@@ -13,6 +13,8 @@ import { RevenueLineChart } from "@/components/admin/dashboard/RevenueLineChart"
 import { StatusDonutChart } from "@/components/admin/dashboard/StatusDonutChart";
 import { TopBarChart } from "@/components/admin/dashboard/TopBarChart";
 import { ActivityFeed, type ActivityEvent } from "@/components/admin/dashboard/ActivityFeed";
+import { ConversionFunnel } from "@/components/admin/dashboard/ConversionFunnel";
+import { VisitorsBreakdown } from "@/components/admin/dashboard/VisitorsBreakdown";
 import {
   TicketIcon,
   TagIcon,
@@ -23,8 +25,22 @@ import {
   SettingsIcon,
   WalletIcon,
   ChartBarIcon,
+  ClockIcon,
 } from "@/components/ui/Icons";
 import type { SaleStatus } from "@/data/sales";
+
+type Trend = { percent: number | null; direction: "up" | "down" };
+
+function formatDuration(hours: number | null): string {
+  if (hours === null) return "—";
+  if (hours < 1) return `${Math.round(hours * 60)} min`;
+  if (hours < 24) return `${hours.toFixed(1)} h`;
+  return `${(hours / 24).toFixed(1)} d`;
+}
+
+function formatPercent(value: number | null): string {
+  return value === null ? "—" : `${value.toFixed(1)}%`;
+}
 
 interface DashboardStats {
   matchesTotal: number;
@@ -48,10 +64,20 @@ type Range = "7d" | "30d" | "3m" | "1y";
 
 interface DashboardPayload {
   kpis: {
-    ingresos: { value: number; trend: { percent: number | null; direction: "up" | "down" } };
-    solicitudes: { value: number; trend: { percent: number | null; direction: "up" | "down" } };
-    confirmadas: { value: number; trend: { percent: number | null; direction: "up" | "down" } };
-    entregadas: { value: number; trend: { percent: number | null; direction: "up" | "down" } };
+    ingresos: { value: number; trend: Trend };
+    solicitudes: { value: number; trend: Trend };
+    confirmadas: { value: number; trend: Trend };
+    entregadas: { value: number; trend: Trend };
+    boletasVendidas: { value: number; trend: Trend };
+    visitantesUnicos: { value: number; trend: Trend };
+    visitantesTotales: { value: number; trend: Trend };
+    conversion: { value: number | null; trend: Trend };
+    clientesUnicos: { value: number; trend: Trend };
+    usuariosRegistrados: { value: number; trend: Trend };
+    tiempoRespuestaHoras: { value: number | null };
+    asesorConMasVentas: { value: string };
+    partidoMasVendido: { value: string };
+    localidadMasVendida: { value: string };
   };
   salesByDay: { date: string; count: number }[];
   revenueByDay: { date: string; total: number }[];
@@ -60,6 +86,8 @@ interface DashboardPayload {
   topTiers: { label: string; count: number }[];
   salesByAdvisor: { name: string; color: string; count: number }[];
   activity: ActivityEvent[];
+  visitorsBreakdown: { today: number; d7: number; d15: number; d30: number; y1: number };
+  funnel: { visitors: number; solicitudes: number; confirmadas: number };
 }
 
 const RANGE_OPTIONS: { value: Range; label: string }[] = [
@@ -194,7 +222,7 @@ export default function AdminDashboardPage() {
       {/* ---- KPI row ---- */}
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {commercialLoading ? (
-          Array.from({ length: 4 }).map((_, i) => <SkeletonStatCard key={i} />)
+          Array.from({ length: 14 }).map((_, i) => <SkeletonStatCard key={i} />)
         ) : (
           <>
             <KpiCard
@@ -212,11 +240,18 @@ export default function AdminDashboardPage() {
               accent="gold"
             />
             <KpiCard
-              label="Ventas confirmadas"
+              label="Compras confirmadas"
               value={commercial.kpis.confirmadas.value}
               trend={commercial.kpis.confirmadas.trend}
               icon={<TicketIcon className="h-5 w-5" />}
               accent="whatsapp"
+            />
+            <KpiCard
+              label="Boletas vendidas"
+              value={commercial.kpis.boletasVendidas.value}
+              trend={commercial.kpis.boletasVendidas.trend}
+              icon={<TicketIcon className="h-5 w-5" />}
+              accent="royal"
             />
             <KpiCard
               label="Boletas entregadas"
@@ -224,6 +259,65 @@ export default function AdminDashboardPage() {
               trend={commercial.kpis.entregadas.trend}
               icon={<TicketIcon className="h-5 w-5" />}
               accent="neutral"
+            />
+            <KpiCard
+              label="Visitantes únicos"
+              value={commercial.kpis.visitantesUnicos.value}
+              trend={commercial.kpis.visitantesUnicos.trend}
+              icon={<UsersIcon className="h-5 w-5" />}
+              accent="gold"
+            />
+            <KpiCard
+              label="Visitantes totales"
+              value={commercial.kpis.visitantesTotales.value}
+              trend={commercial.kpis.visitantesTotales.trend}
+              icon={<UsersIcon className="h-5 w-5" />}
+              accent="neutral"
+            />
+            <KpiCard
+              label="Conversión"
+              value={formatPercent(commercial.kpis.conversion.value)}
+              trend={commercial.kpis.conversion.trend}
+              icon={<ChartBarIcon className="h-5 w-5" />}
+              accent="whatsapp"
+            />
+            <KpiCard
+              label="Clientes únicos"
+              value={commercial.kpis.clientesUnicos.value}
+              trend={commercial.kpis.clientesUnicos.trend}
+              icon={<UsersIcon className="h-5 w-5" />}
+              accent="royal"
+            />
+            <KpiCard
+              label="Usuarios registrados"
+              value={commercial.kpis.usuariosRegistrados.value}
+              trend={commercial.kpis.usuariosRegistrados.trend}
+              icon={<UsersIcon className="h-5 w-5" />}
+              accent="gold"
+            />
+            <KpiCard
+              label="Tiempo prom. de respuesta"
+              value={formatDuration(commercial.kpis.tiempoRespuestaHoras.value)}
+              icon={<ClockIcon className="h-5 w-5" />}
+              accent="neutral"
+            />
+            <KpiCard
+              label="Asesor con más ventas"
+              value={commercial.kpis.asesorConMasVentas.value}
+              icon={<UsersIcon className="h-5 w-5" />}
+              accent="royal"
+            />
+            <KpiCard
+              label="Partido más vendido"
+              value={commercial.kpis.partidoMasVendido.value}
+              icon={<TicketIcon className="h-5 w-5" />}
+              accent="gold"
+            />
+            <KpiCard
+              label="Localidad más vendida"
+              value={commercial.kpis.localidadMasVendida.value}
+              icon={<TagIcon className="h-5 w-5" />}
+              accent="whatsapp"
             />
           </>
         )}
@@ -249,6 +343,38 @@ export default function AdminDashboardPage() {
             <Skeleton className="mt-4 h-[240px] w-full" />
           ) : (
             <RevenueLineChart data={commercial.revenueByDay} />
+          )}
+        </div>
+      </div>
+
+      {/* ---- Embudo de conversión + visitantes ---- */}
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-admin-xl border border-admin-border bg-admin-surface p-5 shadow-admin-xs">
+          <h3 className="font-display text-base font-bold tracking-tight text-admin-text">
+            Embudo de conversión
+          </h3>
+          {commercialLoading ? (
+            <Skeleton className="mt-4 h-[220px] w-full" />
+          ) : (
+            <div className="mt-4">
+              <ConversionFunnel
+                visitors={commercial.funnel.visitors}
+                solicitudes={commercial.funnel.solicitudes}
+                confirmadas={commercial.funnel.confirmadas}
+              />
+            </div>
+          )}
+        </div>
+        <div className="rounded-admin-xl border border-admin-border bg-admin-surface p-5 shadow-admin-xs">
+          <h3 className="font-display text-base font-bold tracking-tight text-admin-text">
+            Visitantes
+          </h3>
+          {commercialLoading ? (
+            <Skeleton className="mt-4 h-[220px] w-full" />
+          ) : (
+            <div className="mt-4">
+              <VisitorsBreakdown data={commercial.visitorsBreakdown} />
+            </div>
           )}
         </div>
       </div>

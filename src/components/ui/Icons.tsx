@@ -478,6 +478,27 @@ export function TrendingDownIcon({ className = "h-4 w-4" }: IconProps) {
   );
 }
 
+export function RefreshIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M4 12a8 8 0 0 1 14-5.2M20 12a8 8 0 0 1-14 5.2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M18.5 3v4h-4M5.5 21v-4h4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function WalletIcon({ className = "h-5 w-5" }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className}>

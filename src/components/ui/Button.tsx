@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ButtonHTMLAttributes, ReactNode } from "react";
 
-type Variant = "primary" | "secondary" | "whatsapp" | "ghost" | "outline-light";
+type Variant = "primary" | "secondary" | "whatsapp" | "ghost" | "outline-light" | "destructive";
 type Size = "md" | "lg" | "sm";
 
 const variantClasses: Record<Variant, string> = {
@@ -14,6 +14,8 @@ const variantClasses: Record<Variant, string> = {
   ghost: "bg-transparent text-navy-900 hover:bg-navy-900/5",
   "outline-light":
     "bg-white/10 text-white border border-white/30 hover:bg-white/20 backdrop-blur-sm",
+  destructive:
+    "bg-rose-600 text-white hover:bg-rose-700 shadow-[0_10px_30px_-10px_rgba(225,29,72,0.5)]",
 };
 
 const sizeClasses: Record<Size, string> = {

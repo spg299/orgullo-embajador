@@ -17,6 +17,12 @@ interface SaleRow {
   quantity: number;
   advisor_id: string | null;
   match_label: string;
+  buyer_email: string;
+}
+
+interface VisitRow {
+  visitor_id: string;
+  created_at: string;
 }
 
 function dayKey(iso: string) {
@@ -25,6 +31,13 @@ function dayKey(iso: string) {
 
 function revenueDate(sale: SaleRow): string | null {
   return sale.status === "confirmada" ? (sale.confirmed_at ?? sale.updated_at) : null;
+}
+
+// The moment a sale was "resolved" one way or another — used for the
+// average-response-time KPI. Still-pending solicitudes have no resolution
+// yet, so they're excluded from that average.
+function resolvedAt(sale: SaleRow): string | null {
+  return sale.confirmed_at ?? sale.cancelled_at ?? null;
 }
 
 // Delivery is tracked via delivered_at, independent of status — a sale
@@ -59,27 +72,28 @@ export async function POST(request: NextRequest) {
   const now = new Date();
   const since = new Date(now.getTime() - rangeDays * 86400000);
   const previousSince = new Date(since.getTime() - rangeDays * 86400000);
+  const oneYearAgo = new Date(now.getTime() - 365 * 86400000);
 
   const supabaseAdmin = getSupabaseAdmin();
 
-  const [salesRes, saleItemsRes, advisorsRes, profilesRes, testimonialsRes] = await Promise.all([
+  const [salesRes, saleItemsRes, advisorsRes, profilesRes, testimonialsRes, visitsRes] = await Promise.all([
     supabaseAdmin
       .from("sales")
       .select(
-        "id, status, created_at, confirmed_at, delivered_at, cancelled_at, updated_at, total, quantity, advisor_id, match_label",
+        "id, status, created_at, confirmed_at, delivered_at, cancelled_at, updated_at, total, quantity, advisor_id, match_label, buyer_email",
       ),
     supabaseAdmin.from("sale_items").select("tier_name, quantity"),
     supabaseAdmin.from("advisors").select("id, name, color"),
-    supabaseAdmin
-      .from("profiles")
-      .select("id, full_name, created_at")
-      .order("created_at", { ascending: false })
-      .limit(5),
+    supabaseAdmin.from("profiles").select("id, full_name, created_at").order("created_at", { ascending: false }),
     supabaseAdmin
       .from("testimonials")
       .select("id, name, created_at")
       .order("created_at", { ascending: false })
       .limit(5),
+    supabaseAdmin
+      .from("site_visits")
+      .select("visitor_id, created_at")
+      .gte("created_at", oneYearAgo.toISOString()),
   ]);
 
   if (salesRes.error) return NextResponse.json({ error: salesRes.error.message }, { status: 400 });
@@ -89,6 +103,7 @@ export async function POST(request: NextRequest) {
   const advisors = advisorsRes.data ?? [];
   const profiles = profilesRes.data ?? [];
   const testimonials = testimonialsRes.data ?? [];
+  const visits = (visitsRes.data ?? []) as VisitRow[];
 
   const inRange = (iso: string, from: Date, to: Date) => {
     const t = new Date(iso).getTime();
@@ -119,6 +134,47 @@ export async function POST(request: NextRequest) {
     }, 0);
   }
 
+  function ticketsSoldInPeriod(list: SaleRow[], from: Date, to: Date) {
+    return list.reduce((sum, s) => {
+      if (s.status === "confirmada" && s.confirmed_at && inRange(s.confirmed_at, from, to)) {
+        return sum + s.quantity;
+      }
+      return sum;
+    }, 0);
+  }
+
+  function uniqueClientsInPeriod(list: SaleRow[], from: Date, to: Date) {
+    const emails = new Set<string>();
+    for (const s of list) {
+      if (s.status === "confirmada" && s.confirmed_at && inRange(s.confirmed_at, from, to)) {
+        emails.add(s.buyer_email.toLowerCase());
+      }
+    }
+    return emails.size;
+  }
+
+  function avgResponseHoursInPeriod(list: SaleRow[], from: Date, to: Date) {
+    const durations: number[] = [];
+    for (const s of list) {
+      const resolved = resolvedAt(s);
+      if (resolved && inRange(resolved, from, to)) {
+        const hours = (new Date(resolved).getTime() - new Date(s.created_at).getTime()) / 3600000;
+        durations.push(hours);
+      }
+    }
+    if (durations.length === 0) return null;
+    return durations.reduce((a, b) => a + b, 0) / durations.length;
+  }
+
+  function visitorsInPeriod(from: Date, to: Date) {
+    const inWindow = visits.filter((v) => inRange(v.created_at, from, to));
+    return { unique: new Set(inWindow.map((v) => v.visitor_id)).size, total: inWindow.length };
+  }
+
+  function usersCountInPeriod(from: Date, to: Date) {
+    return profiles.filter((p) => inRange(p.created_at, from, to)).length;
+  }
+
   const ingresos = revenueInPeriod(sales, since, now);
   const ingresosPrev = revenueInPeriod(sales, previousSince, since);
   const solicitudes = currentSales.length;
@@ -127,13 +183,19 @@ export async function POST(request: NextRequest) {
   const confirmadasPrev = confirmedCountInPeriod(sales, previousSince, since);
   const entregadas = deliveredQuantityInPeriod(sales, since, now);
   const entregadasPrev = deliveredQuantityInPeriod(sales, previousSince, since);
-
-  const kpis = {
-    ingresos: { value: ingresos, trend: trend(ingresos, ingresosPrev) },
-    solicitudes: { value: solicitudes, trend: trend(solicitudes, solicitudesPrev) },
-    confirmadas: { value: confirmadas, trend: trend(confirmadas, confirmadasPrev) },
-    entregadas: { value: entregadas, trend: trend(entregadas, entregadasPrev) },
-  };
+  const boletasVendidas = ticketsSoldInPeriod(sales, since, now);
+  const boletasVendidasPrev = ticketsSoldInPeriod(sales, previousSince, since);
+  const clientesUnicos = uniqueClientsInPeriod(sales, since, now);
+  const clientesUnicosPrev = uniqueClientsInPeriod(sales, previousSince, since);
+  const tiempoRespuestaHoras = avgResponseHoursInPeriod(sales, since, now);
+  const visitorsCurrent = visitorsInPeriod(since, now);
+  const visitorsPrevious = visitorsInPeriod(previousSince, since);
+  const usuariosRegistrados = profiles.length;
+  const usuariosRegistradosPrev = usersCountInPeriod(previousSince, since);
+  const usuariosRegistradosCurrent = usersCountInPeriod(since, now);
+  const conversion = visitorsCurrent.unique > 0 ? (confirmadas / visitorsCurrent.unique) * 100 : null;
+  const conversionPrev =
+    visitorsPrevious.unique > 0 ? (confirmadasPrev / visitorsPrevious.unique) * 100 : null;
 
   // ---- Ventas por día / Ingresos por período (day buckets across the range) ----
   const salesByDay: { date: string; count: number }[] = [];
@@ -189,6 +251,17 @@ export async function POST(request: NextRequest) {
     .filter((a) => a.count > 0)
     .sort((a, b) => b.count - a.count);
 
+  // ---- Visitantes: fixed reporting windows, independent of the range selector ----
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const visitorsBreakdown = {
+    today: visitorsInPeriod(startOfToday, now).total,
+    d7: visitorsInPeriod(new Date(now.getTime() - 7 * 86400000), now).total,
+    d15: visitorsInPeriod(new Date(now.getTime() - 15 * 86400000), now).total,
+    d30: visitorsInPeriod(new Date(now.getTime() - 30 * 86400000), now).total,
+    y1: visitorsInPeriod(oneYearAgo, now).total,
+  };
+
   // ---- Recent activity feed ----
   const saleEvents = [...sales]
     .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
@@ -200,7 +273,7 @@ export async function POST(request: NextRequest) {
       timestamp: s.updated_at,
     }));
 
-  const userEvents = profiles.map((p) => ({
+  const userEvents = profiles.slice(0, 5).map((p) => ({
     type: "user" as const,
     status: null,
     label: `Nuevo usuario: ${p.full_name || "Sin nombre"}`,
@@ -218,6 +291,26 @@ export async function POST(request: NextRequest) {
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, 15);
 
+  const kpis = {
+    ingresos: { value: ingresos, trend: trend(ingresos, ingresosPrev) },
+    solicitudes: { value: solicitudes, trend: trend(solicitudes, solicitudesPrev) },
+    confirmadas: { value: confirmadas, trend: trend(confirmadas, confirmadasPrev) },
+    entregadas: { value: entregadas, trend: trend(entregadas, entregadasPrev) },
+    boletasVendidas: { value: boletasVendidas, trend: trend(boletasVendidas, boletasVendidasPrev) },
+    visitantesUnicos: { value: visitorsCurrent.unique, trend: trend(visitorsCurrent.unique, visitorsPrevious.unique) },
+    visitantesTotales: { value: visitorsCurrent.total, trend: trend(visitorsCurrent.total, visitorsPrevious.total) },
+    conversion: { value: conversion, trend: trend(conversion ?? 0, conversionPrev ?? 0) },
+    clientesUnicos: { value: clientesUnicos, trend: trend(clientesUnicos, clientesUnicosPrev) },
+    usuariosRegistrados: {
+      value: usuariosRegistrados,
+      trend: trend(usuariosRegistradosCurrent, usuariosRegistradosPrev),
+    },
+    tiempoRespuestaHoras: { value: tiempoRespuestaHoras },
+    asesorConMasVentas: { value: salesByAdvisor[0]?.name ?? "—" },
+    partidoMasVendido: { value: topMatches[0]?.label ?? "—" },
+    localidadMasVendida: { value: topTiers[0]?.label ?? "—" },
+  };
+
   return NextResponse.json({
     kpis,
     salesByDay,
@@ -227,5 +320,11 @@ export async function POST(request: NextRequest) {
     topTiers,
     salesByAdvisor,
     activity,
+    visitorsBreakdown,
+    funnel: {
+      visitors: visitorsCurrent.unique,
+      solicitudes,
+      confirmadas,
+    },
   });
 }
