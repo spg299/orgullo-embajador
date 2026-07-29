@@ -5,6 +5,8 @@ export interface Testimonial {
   name: string;
   message: string;
   imageUrl: string | null;
+  screenshotUrl: string | null;
+  rating: number;
 }
 
 interface TestimonialRow {
@@ -12,6 +14,8 @@ interface TestimonialRow {
   name: string;
   message: string;
   image_url: string | null;
+  screenshot_url: string | null;
+  rating: number;
 }
 
 // No static fallback content: testimonials are entirely admin-authored from
@@ -20,7 +24,7 @@ interface TestimonialRow {
 export async function fetchTestimonials(): Promise<Testimonial[]> {
   const { data, error } = await supabase
     .from("testimonials")
-    .select("id, name, message, image_url")
+    .select("id, name, message, image_url, screenshot_url, rating")
     .eq("active", true)
     .order("sort_order");
   if (error || !data) return [];
@@ -30,5 +34,7 @@ export async function fetchTestimonials(): Promise<Testimonial[]> {
     name: row.name,
     message: row.message,
     imageUrl: row.image_url,
+    screenshotUrl: row.screenshot_url,
+    rating: row.rating,
   }));
 }

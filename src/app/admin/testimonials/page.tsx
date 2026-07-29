@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { supabase } from "@/lib/supabase/client";
 import Button from "@/components/ui/Button";
-import { PencilIcon, TrashIcon, UploadIcon, SearchIcon } from "@/components/ui/Icons";
+import { PencilIcon, TrashIcon, UploadIcon, SearchIcon, ChatIcon } from "@/components/ui/Icons";
 import { useDataTable } from "@/components/ui/admin/useDataTable";
 import { Dialog } from "@/components/ui/admin/Dialog";
 import { ConfirmDialog } from "@/components/ui/admin/ConfirmDialog";
@@ -13,20 +13,27 @@ import { Checkbox } from "@/components/ui/admin/Checkbox";
 import { Badge } from "@/components/ui/admin/Badge";
 import { SkeletonCard } from "@/components/ui/admin/Skeleton";
 import { useToast } from "@/components/ui/admin/Toast";
+import StarRating from "@/components/ui/StarRating";
 
 interface TestimonialRow {
   id: string;
   name: string;
   message: string;
   image_url: string | null;
+  screenshot_url: string | null;
+  rating: number;
   active: boolean;
   sort_order: number;
 }
+
+type UploadField = "image_url" | "screenshot_url";
 
 const emptyTestimonial: Omit<TestimonialRow, "id"> = {
   name: "",
   message: "",
   image_url: "",
+  screenshot_url: "",
+  rating: 5,
   active: true,
   sort_order: 0,
 };
@@ -36,11 +43,13 @@ export default function AdminTestimonialsPage() {
   const [items, setItems] = useState<TestimonialRow[] | null>(null);
   const [editing, setEditing] = useState<Partial<TestimonialRow> | null>(null);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [uploadingField, setUploadingField] = useState<UploadField | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<TestimonialRow | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [viewingScreenshot, setViewingScreenshot] = useState<TestimonialRow | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const screenshotInputRef = useRef<HTMLInputElement>(null);
   const loading = items === null;
 
   const table = useDataTable<TestimonialRow>({
@@ -66,8 +75,8 @@ export default function AdminTestimonialsPage() {
     return data.session?.access_token;
   }
 
-  async function handleUpload(file: File) {
-    setUploading(true);
+  async function handleUpload(file: File, field: UploadField) {
+    setUploadingField(field);
     setError(null);
     const accessToken = await getAccessToken();
     const formData = new FormData();
@@ -76,10 +85,10 @@ export default function AdminTestimonialsPage() {
 
     const res = await fetch("/api/admin/testimonials/upload", { method: "POST", body: formData });
     const body = await res.json().catch(() => ({}));
-    setUploading(false);
+    setUploadingField(null);
 
     if (res.ok) {
-      setEditing((prev) => (prev ? { ...prev, image_url: body.url } : prev));
+      setEditing((prev) => (prev ? { ...prev, [field]: body.url } : prev));
     } else {
       setError(body.error ?? "No se pudo subir la imagen.");
     }
@@ -204,15 +213,16 @@ export default function AdminTestimonialsPage() {
                   {item.name.slice(0, 1)}
                 </div>
               )}
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-display font-bold text-admin-text">{item.name}</p>
                   <Badge variant={item.active ? "success" : "neutral"}>
                     {item.active ? "Activo" : "Inactivo"}
                   </Badge>
                 </div>
+                <StarRating value={item.rating} size="h-3.5 w-3.5" className="mt-1" />
                 <p className="mt-1 text-sm text-admin-text-muted">{item.message}</p>
-                <div className="mt-3 flex items-center gap-2">
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => toggleActive(item)}
@@ -239,6 +249,21 @@ export default function AdminTestimonialsPage() {
                   >
                     <TrashIcon className="h-3.5 w-3.5" />
                   </button>
+
+                  <span className="ml-auto">
+                    {item.screenshot_url ? (
+                      <button
+                        type="button"
+                        onClick={() => setViewingScreenshot(item)}
+                        className="flex items-center gap-1.5 rounded-full bg-royal-50 px-3 py-1.5 text-xs font-semibold text-royal-600 transition-colors hover:bg-royal-100 dark:bg-royal-400/10 dark:hover:bg-royal-400/20"
+                      >
+                        <ChatIcon className="h-3.5 w-3.5" />
+                        Ver conversación
+                      </button>
+                    ) : (
+                      <Badge variant="neutral">Sin captura</Badge>
+                    )}
+                  </span>
                 </div>
               </div>
             </div>
@@ -260,24 +285,67 @@ export default function AdminTestimonialsPage() {
               ) : (
                 <div className="h-16 w-16 rounded-full bg-royal-50 dark:bg-royal-400/10" />
               )}
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                icon={<UploadIcon className="h-4 w-4" />}
-                disabled={uploading}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {uploading ? "Subiendo..." : "Subir imagen"}
-              </Button>
+              <div>
+                <p className="mb-1.5 text-sm font-medium text-admin-text/80">Foto de perfil</p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  icon={<UploadIcon className="h-4 w-4" />}
+                  disabled={uploadingField !== null}
+                  onClick={() => avatarInputRef.current?.click()}
+                >
+                  {uploadingField === "image_url" ? "Subiendo..." : "Subir foto"}
+                </Button>
+              </div>
               <input
-                ref={fileInputRef}
+                ref={avatarInputRef}
                 type="file"
                 accept="image/*"
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) handleUpload(file);
+                  if (file) handleUpload(file, "image_url");
+                }}
+              />
+            </div>
+
+            <div className="flex items-center gap-4 rounded-admin-md border border-dashed border-admin-border p-4">
+              {editing.screenshot_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={editing.screenshot_url}
+                  alt=""
+                  className="h-16 w-16 rounded-admin-sm object-cover"
+                />
+              ) : (
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-admin-sm bg-admin-bg text-admin-text-muted">
+                  <ChatIcon className="h-6 w-6" />
+                </div>
+              )}
+              <div>
+                <p className="mb-1.5 text-sm font-medium text-admin-text/80">
+                  Captura de la conversación
+                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  icon={<UploadIcon className="h-4 w-4" />}
+                  disabled={uploadingField !== null}
+                  onClick={() => screenshotInputRef.current?.click()}
+                >
+                  {uploadingField === "screenshot_url" ? "Subiendo..." : "Subir captura"}
+                </Button>
+              </div>
+              <input
+                ref={screenshotInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleUpload(file, "screenshot_url");
                 }}
               />
             </div>
@@ -297,6 +365,15 @@ export default function AdminTestimonialsPage() {
               onChange={(e) => setEditing({ ...editing, message: e.target.value })}
             />
 
+            <div>
+              <p className="mb-1.5 text-sm font-medium text-admin-text/80">Calificación</p>
+              <StarRating
+                value={editing.rating ?? 5}
+                onChange={(rating) => setEditing({ ...editing, rating })}
+                size="h-6 w-6"
+              />
+            </div>
+
             <Checkbox
               label="Activo (visible)"
               checked={editing.active ?? true}
@@ -314,6 +391,22 @@ export default function AdminTestimonialsPage() {
               </Button>
             </div>
           </form>
+        )}
+      </Dialog>
+
+      <Dialog
+        open={viewingScreenshot !== null}
+        onClose={() => setViewingScreenshot(null)}
+        title={viewingScreenshot ? `Conversación con ${viewingScreenshot.name}` : ""}
+        maxWidth="sm"
+      >
+        {viewingScreenshot?.screenshot_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={viewingScreenshot.screenshot_url}
+            alt={`Conversación con ${viewingScreenshot.name}`}
+            className="max-h-[70vh] w-full rounded-admin-md object-contain"
+          />
         )}
       </Dialog>
 
