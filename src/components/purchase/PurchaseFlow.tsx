@@ -182,6 +182,7 @@ export default function PurchaseFlow({ match }: { match: Match }) {
             <WhatsAppCheckoutBox
               match={match}
               selections={selections}
+              subtotal={subtotal}
               total={total}
               buyer={buyerForm}
               disabled={Boolean(disabledReason)}

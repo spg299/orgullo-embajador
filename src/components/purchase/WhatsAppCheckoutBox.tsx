@@ -23,6 +23,7 @@ interface Selection {
 export default function WhatsAppCheckoutBox({
   match,
   selections,
+  subtotal,
   total,
   buyer,
   disabled,
@@ -32,6 +33,7 @@ export default function WhatsAppCheckoutBox({
 }: {
   match: Match;
   selections: Selection[];
+  subtotal?: number;
   total: number;
   buyer: BuyerFormValues;
   disabled: boolean;
@@ -68,6 +70,30 @@ export default function WhatsAppCheckoutBox({
     ];
 
     const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(lines.join("\n"))}`;
+
+    // Fire-and-forget: record the sale in the background without ever
+    // blocking or delaying the WhatsApp redirect below, which remains the
+    // actual critical path. Awaiting here would also risk the popup
+    // blocker catching window.open once it's no longer in the same
+    // synchronous click-handler call stack.
+    fetch("/api/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        matchId: match.id,
+        matchLabel: `${match.home} vs ${match.away}`,
+        buyer,
+        selections: selections.map(({ tier, quantity }) => ({
+          tierId: tier.id,
+          tierName: tier.name,
+          quantity,
+          unitPrice: tier.price,
+        })),
+        subtotal: subtotal ?? total,
+        total,
+      }),
+    }).catch(() => {});
+
     window.open(url, "_blank", "noopener,noreferrer");
     onFinalize();
   }

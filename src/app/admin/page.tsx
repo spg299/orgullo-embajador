@@ -5,7 +5,14 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { formatCOP } from "@/lib/format";
 import { StatCard } from "@/components/ui/admin/StatCard";
-import { SkeletonStatCard } from "@/components/ui/admin/Skeleton";
+import { KpiCard } from "@/components/ui/admin/KpiCard";
+import { Select } from "@/components/ui/admin/Select";
+import { SkeletonStatCard, Skeleton } from "@/components/ui/admin/Skeleton";
+import { SalesLineChart } from "@/components/admin/dashboard/SalesLineChart";
+import { RevenueLineChart } from "@/components/admin/dashboard/RevenueLineChart";
+import { StatusDonutChart } from "@/components/admin/dashboard/StatusDonutChart";
+import { TopBarChart } from "@/components/admin/dashboard/TopBarChart";
+import { ActivityFeed, type ActivityEvent } from "@/components/admin/dashboard/ActivityFeed";
 import {
   TicketIcon,
   TagIcon,
@@ -14,7 +21,10 @@ import {
   VideoIcon,
   PhotoIcon,
   SettingsIcon,
+  WalletIcon,
+  ChartBarIcon,
 } from "@/components/ui/Icons";
+import type { SaleStatus } from "@/data/sales";
 
 interface DashboardStats {
   matchesTotal: number;
@@ -33,6 +43,31 @@ interface DashboardStats {
   heroVideosTotal: number;
   logosCount: number;
 }
+
+type Range = "7d" | "30d" | "3m" | "1y";
+
+interface DashboardPayload {
+  kpis: {
+    ingresos: { value: number; trend: { percent: number | null; direction: "up" | "down" } };
+    solicitudes: { value: number; trend: { percent: number | null; direction: "up" | "down" } };
+    confirmadas: { value: number; trend: { percent: number | null; direction: "up" | "down" } };
+    entregadas: { value: number; trend: { percent: number | null; direction: "up" | "down" } };
+  };
+  salesByDay: { date: string; count: number }[];
+  revenueByDay: { date: string; total: number }[];
+  statusDistribution: { status: SaleStatus; label: string; count: number }[];
+  topMatches: { label: string; count: number }[];
+  topTiers: { label: string; count: number }[];
+  salesByAdvisor: { name: string; color: string; count: number }[];
+  activity: ActivityEvent[];
+}
+
+const RANGE_OPTIONS: { value: Range; label: string }[] = [
+  { value: "7d", label: "7 días" },
+  { value: "30d", label: "30 días" },
+  { value: "3m", label: "3 meses" },
+  { value: "1y", label: "1 año" },
+];
 
 const quickLinks = [
   { href: "/admin/matches", label: "Partidos", icon: TicketIcon },
@@ -104,24 +139,194 @@ async function fetchStats(): Promise<DashboardStats | null> {
   };
 }
 
+async function fetchDashboard(range: Range): Promise<DashboardPayload | null> {
+  const { data } = await supabase.auth.getSession();
+  const accessToken = data.session?.access_token;
+
+  const res = await fetch("/api/admin/dashboard", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ accessToken, range }),
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [range, setRange] = useState<Range>("30d");
+  const [commercial, setCommercial] = useState<DashboardPayload | null>(null);
   const loading = stats === null;
+  const commercialLoading = commercial === null;
 
   useEffect(() => {
     fetchStats().then(setStats);
   }, []);
 
+  useEffect(() => {
+    fetchDashboard(range).then(setCommercial);
+  }, [range]);
+
   return (
     <div className="mx-auto max-w-6xl">
-      <h1 className="font-display text-2xl font-extrabold tracking-tight text-admin-text">
-        Dashboard
-      </h1>
-      <p className="mt-1 text-sm font-medium text-admin-text-muted">
-        Un vistazo rápido al estado real del sitio.
-      </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-extrabold tracking-tight text-admin-text">
+            Dashboard
+          </h1>
+          <p className="mt-1 text-sm font-medium text-admin-text-muted">
+            Panel ejecutivo: ventas, ingresos y actividad comercial en tiempo real.
+          </p>
+        </div>
+        <Select
+          value={range}
+          onChange={(e) => setRange(e.target.value as Range)}
+          className="sm:w-44"
+        >
+          {RANGE_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </Select>
+      </div>
 
+      {/* ---- KPI row ---- */}
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {commercialLoading ? (
+          Array.from({ length: 4 }).map((_, i) => <SkeletonStatCard key={i} />)
+        ) : (
+          <>
+            <KpiCard
+              label="Ingresos"
+              value={formatCOP(commercial.kpis.ingresos.value)}
+              trend={commercial.kpis.ingresos.trend}
+              icon={<WalletIcon className="h-5 w-5" />}
+              accent="royal"
+            />
+            <KpiCard
+              label="Solicitudes"
+              value={commercial.kpis.solicitudes.value}
+              trend={commercial.kpis.solicitudes.trend}
+              icon={<ChartBarIcon className="h-5 w-5" />}
+              accent="gold"
+            />
+            <KpiCard
+              label="Ventas confirmadas"
+              value={commercial.kpis.confirmadas.value}
+              trend={commercial.kpis.confirmadas.trend}
+              icon={<TicketIcon className="h-5 w-5" />}
+              accent="whatsapp"
+            />
+            <KpiCard
+              label="Boletas entregadas"
+              value={commercial.kpis.entregadas.value}
+              trend={commercial.kpis.entregadas.trend}
+              icon={<TicketIcon className="h-5 w-5" />}
+              accent="neutral"
+            />
+          </>
+        )}
+      </div>
+
+      {/* ---- Line charts ---- */}
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-admin-xl border border-admin-border bg-admin-surface p-5 shadow-admin-xs">
+          <h3 className="font-display text-base font-bold tracking-tight text-admin-text">
+            Ventas por día
+          </h3>
+          {commercialLoading ? (
+            <Skeleton className="mt-4 h-[240px] w-full" />
+          ) : (
+            <SalesLineChart data={commercial.salesByDay} />
+          )}
+        </div>
+        <div className="rounded-admin-xl border border-admin-border bg-admin-surface p-5 shadow-admin-xs">
+          <h3 className="font-display text-base font-bold tracking-tight text-admin-text">
+            Ingresos por período
+          </h3>
+          {commercialLoading ? (
+            <Skeleton className="mt-4 h-[240px] w-full" />
+          ) : (
+            <RevenueLineChart data={commercial.revenueByDay} />
+          )}
+        </div>
+      </div>
+
+      {/* ---- Donut + top bar charts ---- */}
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <div className="rounded-admin-xl border border-admin-border bg-admin-surface p-5 shadow-admin-xs">
+          <h3 className="font-display text-base font-bold tracking-tight text-admin-text">
+            Distribución por estado
+          </h3>
+          {commercialLoading ? (
+            <Skeleton className="mt-4 h-[240px] w-full" />
+          ) : (
+            <StatusDonutChart data={commercial.statusDistribution} />
+          )}
+        </div>
+        <div className="rounded-admin-xl border border-admin-border bg-admin-surface p-5 shadow-admin-xs">
+          <h3 className="font-display text-base font-bold tracking-tight text-admin-text">
+            Partidos más vendidos
+          </h3>
+          {commercialLoading ? (
+            <Skeleton className="mt-4 h-[220px] w-full" />
+          ) : (
+            <TopBarChart data={commercial.topMatches} emptyMessage="Aún no hay ventas registradas." />
+          )}
+        </div>
+        <div className="rounded-admin-xl border border-admin-border bg-admin-surface p-5 shadow-admin-xs">
+          <h3 className="font-display text-base font-bold tracking-tight text-admin-text">
+            Localidades más vendidas
+          </h3>
+          {commercialLoading ? (
+            <Skeleton className="mt-4 h-[220px] w-full" />
+          ) : (
+            <TopBarChart
+              data={commercial.topTiers}
+              emptyMessage="Aún no hay ventas registradas."
+              defaultColor="#cc9a2e"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* ---- Ventas por asesor + actividad reciente ---- */}
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-admin-xl border border-admin-border bg-admin-surface p-5 shadow-admin-xs">
+          <h3 className="font-display text-base font-bold tracking-tight text-admin-text">
+            Ventas por asesor
+          </h3>
+          {commercialLoading ? (
+            <Skeleton className="mt-4 h-[220px] w-full" />
+          ) : (
+            <TopBarChart
+              data={commercial.salesByAdvisor.map((a) => ({ label: a.name, count: a.count, color: a.color }))}
+              emptyMessage="Aún no hay ventas asignadas a asesores."
+            />
+          )}
+        </div>
+        <div className="rounded-admin-xl border border-admin-border bg-admin-surface p-5 shadow-admin-xs">
+          <h3 className="font-display text-base font-bold tracking-tight text-admin-text">
+            Actividad reciente
+          </h3>
+          {commercialLoading ? (
+            <div className="mt-4 flex flex-col gap-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : (
+            <ActivityFeed events={commercial.activity} />
+          )}
+        </div>
+      </div>
+
+      {/* ---- Secondary: administrative metrics ---- */}
+      <h2 className="mt-10 font-display text-lg font-bold tracking-tight text-admin-text">
+        Métricas administrativas
+      </h2>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {loading ? (
           Array.from({ length: 8 }).map((_, i) => <SkeletonStatCard key={i} />)
         ) : (
