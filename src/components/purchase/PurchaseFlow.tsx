@@ -11,6 +11,11 @@ import OrderSummary from "@/components/purchase/OrderSummary";
 import WhatsAppCheckoutBox from "@/components/purchase/WhatsAppCheckoutBox";
 import { CalendarIcon, MapPinIcon } from "@/components/ui/Icons";
 import { tiers, fetchTiers } from "@/data/tiers";
+import {
+  initialBuyerFormValues,
+  validateBuyerForm,
+  type BuyerFormValues,
+} from "@/lib/purchaseFormValidation";
 import type { Match } from "@/data/matches";
 
 export default function PurchaseFlow({ match }: { match: Match }) {
@@ -19,6 +24,10 @@ export default function PurchaseFlow({ match }: { match: Match }) {
   // Seeded with the static fallback for an identical first paint; upgraded
   // silently to the live /admin/precios data once the fetch resolves.
   const [baseTiers, setBaseTiers] = useState(tiers);
+  const [buyerForm, setBuyerForm] = useState<BuyerFormValues>(initialBuyerFormValues);
+  const [touchedFields, setTouchedFields] = useState<
+    Partial<Record<keyof BuyerFormValues, boolean>>
+  >({});
 
   useEffect(() => {
     fetchTiers().then(setBaseTiers);
@@ -52,6 +61,23 @@ export default function PurchaseFlow({ match }: { match: Match }) {
   );
   const total = subtotal;
   const hasSelection = selections.length > 0;
+
+  const formErrors = useMemo(() => validateBuyerForm(buyerForm), [buyerForm]);
+  const isFormValid = Object.keys(formErrors).length === 0;
+
+  const disabledReason = !hasSelection
+    ? "Selecciona al menos una boleta para continuar."
+    : !isFormValid
+      ? "Completa todos los datos requeridos para continuar."
+      : null;
+
+  function handleFieldChange(field: keyof BuyerFormValues, value: string | boolean) {
+    setBuyerForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function handleFieldBlur(field: keyof BuyerFormValues) {
+    setTouchedFields((prev) => ({ ...prev, [field]: true }));
+  }
 
   return (
     <section className="bg-royal-50/40 py-12 sm:py-16">
@@ -137,7 +163,13 @@ export default function PurchaseFlow({ match }: { match: Match }) {
               </div>
             </div>
 
-            <PurchaseForm />
+            <PurchaseForm
+              values={buyerForm}
+              errors={formErrors}
+              touched={touchedFields}
+              onChange={handleFieldChange}
+              onBlur={handleFieldBlur}
+            />
           </div>
 
           <div className="flex flex-col gap-6 lg:sticky lg:top-28">
@@ -151,7 +183,9 @@ export default function PurchaseFlow({ match }: { match: Match }) {
               match={match}
               selections={selections}
               total={total}
-              disabled={!hasSelection}
+              buyer={buyerForm}
+              disabled={Boolean(disabledReason)}
+              disabledReason={disabledReason}
               submitted={submitted}
               onFinalize={() => setSubmitted(true)}
             />

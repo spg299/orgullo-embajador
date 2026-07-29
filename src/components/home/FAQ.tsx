@@ -6,26 +6,32 @@ const faqs = [
   {
     question: "¿Cómo recibo mis boletas?",
     answer:
-      "Las boletas son entregadas directamente por el equipo de Orgullo Embajador una vez se confirme la compra.",
+      "Las boletas se entregan a través de la aplicación Quentro. Después de confirmar el pago, nuestro equipo transferirá las entradas al mismo correo electrónico con el que estás registrado en Quentro.",
+  },
+  {
+    question: "¿Necesito tener Quentro?",
+    answer:
+      "Sí. Es obligatorio tener una cuenta registrada en la aplicación Quentro, ya que las boletas se entregan únicamente por ese medio.",
   },
   {
     question: "¿Cómo compro una boleta?",
     answer:
-      "Selecciona el partido, elige la localidad y envía tu solicitud mediante WhatsApp. Nuestro equipo se comunicará contigo para finalizar el proceso.",
+      "Selecciona el partido, elige la localidad, completa tus datos y envía tu solicitud por WhatsApp. Un asesor confirmará el pago y realizará la transferencia de las boletas a tu cuenta de Quentro.",
   },
   {
     question: "¿Cómo realizo el pago?",
     answer:
-      "El equipo de Orgullo Embajador indicará los medios de pago disponibles durante el proceso de compra.",
+      "Después de enviar tu solicitud, uno de nuestros asesores te indicará los medios de pago disponibles. Una vez confirmado el pago, se realizará la transferencia de las boletas.",
   },
   {
     question: "¿Las boletas son originales?",
-    answer: "Sí. Todas las boletas entregadas por Orgullo Embajador son oficiales.",
+    answer:
+      "Sí. Todas las boletas son oficiales y se transfieren mediante Quentro, la plataforma autorizada para la gestión de entradas.",
   },
   {
     question: "¿Qué pasa si una localidad aparece agotada?",
     answer:
-      'Cuando una localidad aparece como "Agotado" significa que ya no hay disponibilidad para esa zona del estadio.',
+      'Si una localidad aparece como "Agotado", significa que ya no hay disponibilidad para esa zona del estadio.',
   },
 ];
 

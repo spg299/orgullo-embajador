@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
 import Button from "@/components/ui/Button";
 import { CheckIcon, WhatsAppIcon } from "@/components/ui/Icons";
 import { formatCOP } from "@/lib/format";
 import { siteSettings as defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
 import type { Match } from "@/data/matches";
 import type { Tier } from "@/data/tiers";
+import type { BuyerFormValues } from "@/lib/purchaseFormValidation";
 
 const checklist = [
   "Confirmaremos el pedido",
@@ -24,18 +24,21 @@ export default function WhatsAppCheckoutBox({
   match,
   selections,
   total,
+  buyer,
   disabled,
+  disabledReason,
   submitted,
   onFinalize,
 }: {
   match: Match;
   selections: Selection[];
   total: number;
+  buyer: BuyerFormValues;
   disabled: boolean;
+  disabledReason: string | null;
   submitted: boolean;
   onFinalize: () => void;
 }) {
-  const { user } = useAuth();
   const [whatsappNumber, setWhatsappNumber] = useState(defaultSiteSettings.whatsapp_number);
 
   useEffect(() => {
@@ -43,9 +46,8 @@ export default function WhatsAppCheckoutBox({
   }, []);
 
   function handleFinalize() {
+    if (disabled) return;
     const totalQuantity = selections.reduce((sum, s) => sum + s.quantity, 0);
-    const buyerName = user?.user_metadata?.full_name as string | undefined;
-    const buyerEmail = user?.email;
 
     const lines = [
       "Hola, quiero finalizar mi compra de boletas:",
@@ -58,13 +60,12 @@ export default function WhatsAppCheckoutBox({
       "",
       `Cantidad total: ${totalQuantity} boleta(s)`,
       `Total: ${formatCOP(total)}`,
+      "",
+      `Nombre: ${buyer.fullName}`,
+      `Documento: ${buyer.documentNumber}`,
+      `WhatsApp: ${buyer.whatsapp}`,
+      `Correo: ${buyer.email}`,
     ];
-
-    if (buyerName || buyerEmail) {
-      lines.push("");
-      if (buyerName) lines.push(`Nombre: ${buyerName}`);
-      if (buyerEmail) lines.push(`Correo: ${buyerEmail}`);
-    }
 
     const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(lines.join("\n"))}`;
     window.open(url, "_blank", "noopener,noreferrer");
@@ -125,9 +126,9 @@ export default function WhatsAppCheckoutBox({
         Finalizar compra por WhatsApp
       </Button>
 
-      {disabled && (
+      {disabledReason && (
         <p className="mt-3 text-center text-xs font-medium text-navy-700/50">
-          Selecciona al menos una boleta para continuar.
+          {disabledReason}
         </p>
       )}
     </div>
