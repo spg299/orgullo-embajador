@@ -12,10 +12,12 @@ export function TopBarChart({
   data,
   emptyMessage,
   defaultColor = "#0f3fb0",
+  valueFormatter,
 }: {
   data: Item[];
   emptyMessage: string;
   defaultColor?: string;
+  valueFormatter?: (value: number) => string;
 }) {
   if (data.length === 0) {
     return (
@@ -46,6 +48,7 @@ export function TopBarChart({
             fontSize: 13,
           }}
           cursor={{ fill: "var(--admin-border)" }}
+          formatter={valueFormatter ? (value) => [valueFormatter(Number(value)), ""] : undefined}
         />
         <Bar dataKey="count" radius={[0, 8, 8, 0]} barSize={18}>
           {data.map((item, i) => (

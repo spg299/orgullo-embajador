@@ -1,6 +1,7 @@
 import {
   DashboardIcon,
   ChartBarIcon,
+  WalletIcon,
   TicketIcon,
   TagIcon,
   PhotoIcon,
@@ -18,6 +19,7 @@ export interface AdminNavItem {
 
 export const navItems: AdminNavItem[] = [
   { href: "/admin", label: "Dashboard", icon: DashboardIcon },
+  { href: "/admin/finanzas", label: "Finanzas", icon: WalletIcon },
   { href: "/admin/ventas", label: "Ventas", icon: ChartBarIcon },
   { href: "/admin/matches", label: "Partidos", icon: TicketIcon },
   { href: "/admin/precios", label: "Precios", icon: TagIcon },

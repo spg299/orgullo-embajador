@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import Button from "@/components/ui/Button";
-import { UploadIcon, PencilIcon, TrashIcon, RefreshIcon } from "@/components/ui/Icons";
+import { UploadIcon, PencilIcon, TrashIcon, LockIcon } from "@/components/ui/Icons";
 import { siteSettings as defaultSiteSettings, type SiteSettings } from "@/data/siteSettings";
 import type { Advisor } from "@/data/advisors";
 import { isMaintenanceAllowed } from "@/lib/maintenanceAccess";
@@ -22,6 +22,23 @@ interface AdvisorUser {
   full_name: string | null;
   email: string | null;
 }
+
+interface AccessLog {
+  id: string;
+  email: string | null;
+  path: string;
+  ip: string | null;
+  user_agent: string | null;
+  result: "allowed" | "denied_unauthenticated" | "denied_not_admin" | "rate_limited";
+  created_at: string;
+}
+
+const RESULT_LABELS: Record<AccessLog["result"], string> = {
+  allowed: "Permitido",
+  denied_unauthenticated: "Sin sesión",
+  denied_not_admin: "Sin permisos",
+  rate_limited: "Bloqueado (intentos)",
+};
 
 const emptyAdvisor: Omit<Advisor, "id" | "created_at"> = {
   profile_id: null,
@@ -68,25 +85,65 @@ export default function AdminConfiguracionPage() {
   const advisorAvatarInputRef = useRef<HTMLInputElement>(null);
   const advisorsLoading = advisors === null;
 
-  const [showRecalcConfirm, setShowRecalcConfirm] = useState(false);
-  const [recalculating, setRecalculating] = useState(false);
   const canRecalculate = isMaintenanceAllowed(user?.email);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetPassword, setResetPassword] = useState("");
+  const [verifyingPassword, setVerifyingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [resetting, setResetting] = useState(false);
+  const [accessLogs, setAccessLogs] = useState<AccessLog[] | null>(null);
 
-  async function handleRecalculate() {
-    setRecalculating(true);
+  useEffect(() => {
+    if (!canRecalculate) return;
+    (async () => {
+      const accessToken = await getAdvisorsAccessToken();
+      const res = await fetch("/api/admin/access-log/list", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) setAccessLogs(body.logs as AccessLog[]);
+    })();
+  }, [canRecalculate]);
+
+  async function handleVerifyPassword(e: FormEvent) {
+    e.preventDefault();
+    setVerifyingPassword(true);
+    setPasswordError(null);
     const accessToken = await getAdvisorsAccessToken();
-    const res = await fetch("/api/admin/maintenance/recalculate", {
+    const res = await fetch("/api/admin/maintenance/verify-reset-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken }),
+      body: JSON.stringify({ accessToken, password: resetPassword }),
     });
-    setRecalculating(false);
-    setShowRecalcConfirm(false);
+    setVerifyingPassword(false);
     if (res.ok) {
-      toast.success("Dashboard recalculado correctamente.");
+      setShowPasswordDialog(false);
+      setShowResetConfirm(true);
     } else {
       const body = await res.json().catch(() => ({}));
-      toast.error(body.error ?? "No se pudo recalcular el Dashboard.");
+      setPasswordError(body.error ?? "Contraseña incorrecta.");
+    }
+  }
+
+  async function handleResetDashboard() {
+    setResetting(true);
+    const accessToken = await getAdvisorsAccessToken();
+    const res = await fetch("/api/admin/maintenance/reset-dashboard", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accessToken, password: resetPassword }),
+    });
+    setResetting(false);
+    setShowResetConfirm(false);
+    setResetPassword("");
+    if (res.ok) {
+      toast.success("Los datos del Dashboard se eliminaron correctamente.");
+    } else {
+      const body = await res.json().catch(() => ({}));
+      toast.error(body.error ?? "No se pudo completar la acción.");
     }
   }
 
@@ -584,33 +641,114 @@ export default function AdminConfiguracionPage() {
       {canRecalculate && (
         <div className="mt-8 rounded-admin-xl border border-rose-200 bg-rose-50/50 p-6 shadow-admin-xs dark:border-rose-500/20 dark:bg-rose-500/5 sm:p-8">
           <h2 className="font-display text-xl font-bold tracking-tight text-admin-text">
-            Mantenimiento
+            Administración del Dashboard
           </h2>
           <p className="mt-1 text-sm font-medium text-admin-text-muted">
-            Herramientas administrativas para recalcular estadísticas del sistema.
+            Herramienta para eliminar todos los datos estadísticos del Dashboard y comenzar desde cero.
           </p>
 
           <Button
             variant="destructive"
             size="sm"
             className="mt-5"
-            icon={<RefreshIcon className="h-4 w-4" />}
-            onClick={() => setShowRecalcConfirm(true)}
+            icon={<TrashIcon className="h-4 w-4" />}
+            onClick={() => {
+              setResetPassword("");
+              setPasswordError(null);
+              setShowPasswordDialog(true);
+            }}
           >
-            Recalcular Dashboard
+            🗑️ Borrar datos del Dashboard
           </Button>
+
+          {accessLogs && accessLogs.length > 0 && (
+            <div className="mt-8 border-t border-admin-border pt-6">
+              <h3 className="font-display text-sm font-bold tracking-tight text-admin-text">
+                Registro de accesos
+              </h3>
+              <p className="mt-1 text-xs font-medium text-admin-text-muted">
+                Últimos intentos de acceso denegados o bloqueados al panel administrativo.
+              </p>
+              <div className="mt-3 overflow-x-auto rounded-admin-md border border-admin-border">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-admin-bg font-semibold uppercase tracking-wider text-admin-text-muted">
+                    <tr>
+                      <th className="px-3 py-2">Usuario</th>
+                      <th className="px-3 py-2">Ruta</th>
+                      <th className="px-3 py-2">IP</th>
+                      <th className="px-3 py-2">Resultado</th>
+                      <th className="px-3 py-2">Fecha</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-admin-border">
+                    {accessLogs.map((log) => (
+                      <tr key={log.id}>
+                        <td className="px-3 py-2 text-admin-text">{log.email || "—"}</td>
+                        <td className="px-3 py-2 text-admin-text-muted">{log.path}</td>
+                        <td className="px-3 py-2 text-admin-text-muted">{log.ip || "—"}</td>
+                        <td className="px-3 py-2">
+                          <Badge variant={log.result === "allowed" ? "success" : "danger"}>
+                            {RESULT_LABELS[log.result]}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2 text-admin-text-muted">
+                          {new Date(log.created_at).toLocaleString("es-CO")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
+      <Dialog
+        open={showPasswordDialog}
+        onClose={() => setShowPasswordDialog(false)}
+        title="Confirma tu identidad"
+        maxWidth="sm"
+      >
+        <form className="flex flex-col gap-4" onSubmit={handleVerifyPassword}>
+          <div className="flex items-center gap-3 rounded-admin-md bg-admin-bg p-3 text-admin-text-muted">
+            <LockIcon className="h-5 w-5 shrink-0" />
+            <p className="text-xs font-medium">
+              Esta acción está protegida con una contraseña adicional.
+            </p>
+          </div>
+          <Input
+            label="Contraseña"
+            type="password"
+            required
+            autoFocus
+            value={resetPassword}
+            onChange={(e) => setResetPassword(e.target.value)}
+          />
+          {passwordError && <p className="text-sm text-rose-500">{passwordError}</p>}
+          <div className="mt-1 flex gap-3">
+            <Button type="submit" variant="destructive" className="flex-1" disabled={verifyingPassword}>
+              {verifyingPassword ? "Verificando..." : "Continuar"}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setShowPasswordDialog(false)}>
+              Cancelar
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
       <ConfirmDialog
-        open={showRecalcConfirm}
-        title="¿Recalcular estadísticas?"
-        description="Esta acción volverá a calcular todas las métricas del Dashboard utilizando la información almacenada en la base de datos."
-        confirmLabel="Recalcular"
+        open={showResetConfirm}
+        title="¿Eliminar datos del Dashboard?"
+        description="Esta acción eliminará todas las estadísticas y métricas del Dashboard. Los datos originales (ventas, usuarios, solicitudes y demás registros) NO serán eliminados. Solo se reiniciarán las estadísticas."
+        confirmLabel="Eliminar datos"
         destructive
-        loading={recalculating}
-        onConfirm={handleRecalculate}
-        onCancel={() => setShowRecalcConfirm(false)}
+        loading={resetting}
+        onConfirm={handleResetDashboard}
+        onCancel={() => {
+          setShowResetConfirm(false);
+          setResetPassword("");
+        }}
       />
     </div>
   );

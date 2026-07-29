@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase/client";
 import { AdminThemeProvider } from "@/contexts/AdminThemeContext";
 import { ToastProvider } from "@/components/ui/admin/Toast";
 import AuthModal from "@/components/auth/AuthModal";
@@ -14,8 +15,40 @@ import { Header } from "@/components/admin/layout/Header";
 import { MobileDrawer } from "@/components/admin/layout/MobileDrawer";
 
 function Forbidden() {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
+  const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Every denied/unauthorized attempt is logged server-side (never trusts
+  // this component's own client-side read of `user`/`isAdmin` for the log
+  // entry itself — the API route independently re-verifies the token).
+  useEffect(() => {
+    if (loading) return;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const res = await fetch("/api/admin/access-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: pathname, accessToken: data.session?.access_token }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (body.blocked) {
+        setBlockedMessage("Demasiados intentos fallidos. Inténtalo de nuevo en unos minutos.");
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
+  // Authenticated but not admin: auto-redirect home after a few seconds.
+  useEffect(() => {
+    if (loading || !user || isAdmin) return;
+    const timer = setTimeout(() => router.push("/"), 5000);
+    return () => clearTimeout(timer);
+  }, [loading, user, isAdmin, router]);
+
+  const deniedNotAdmin = !loading && user && !isAdmin;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-navy-950 p-6">
@@ -27,15 +60,16 @@ function Forbidden() {
           Error 403
         </p>
         <h1 className="mt-2 font-display text-2xl font-extrabold tracking-tight text-white">
-          {loading ? "Verificando acceso..." : user ? "No tienes permisos" : "Inicia sesión"}
+          {loading ? "Verificando acceso..." : deniedNotAdmin ? "Acceso denegado" : "Inicia sesión"}
         </h1>
         <p className="mt-3 text-sm font-medium leading-relaxed text-white/60">
           {loading
             ? "Un momento mientras confirmamos tu sesión."
-            : user
-              ? "Esta sección es solo para administradores. Si crees que deberías tener acceso, contacta a un administrador."
+            : deniedNotAdmin
+              ? "Acceso denegado. No tienes permisos para acceder al panel administrativo. Te redirigiremos al sitio principal en unos segundos."
               : "Necesitas iniciar sesión con una cuenta de administrador para ver el panel."}
         </p>
+        {blockedMessage && <p className="mt-3 text-sm font-semibold text-rose-400">{blockedMessage}</p>}
 
         {!loading && (
           <div className="mt-8 flex flex-col gap-3">
