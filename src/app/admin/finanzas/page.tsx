@@ -32,7 +32,7 @@ import { BudgetDonutChart } from "@/components/admin/finance/BudgetDonutChart";
 import { IncomeVsExpenseChart } from "@/components/admin/finance/IncomeVsExpenseChart";
 import { TopBarChart } from "@/components/admin/dashboard/TopBarChart";
 import { isFinanceAdmin } from "@/lib/financeAccess";
-import { summarizeBudget, type Budget, type BudgetMovement, type BudgetSummary } from "@/data/finance";
+import { summarizeBudget, type Budget, type BudgetMovement, type BudgetSummary, type MovementType } from "@/data/finance";
 import type { Advisor } from "@/data/advisors";
 import { exportMovementsToExcel, exportMovementsToPdf } from "@/lib/finance/exports";
 
@@ -235,26 +235,43 @@ export default function AdminFinanzasPage() {
     setMovementError(null);
     const accessToken = await getAccessToken();
 
+    const payload = {
+      id: editingMovement.id,
+      advisor_id: editingMovement.advisor_id!,
+      type: editingMovement.type as MovementType,
+      concept: editingMovement.concept!,
+      amount: Number(editingMovement.amount),
+      movement_date: editingMovement.movement_date!,
+      observations: editingMovement.observations || null,
+      created_by: editingMovement.created_by ?? null,
+    };
+
     const res = await fetch("/api/finance/movements", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        accessToken,
-        movement: {
-          id: editingMovement.id,
-          advisor_id: editingMovement.advisor_id,
-          type: editingMovement.type,
-          concept: editingMovement.concept,
-          amount: Number(editingMovement.amount),
-          movement_date: editingMovement.movement_date,
-          observations: editingMovement.observations || null,
-          created_by: editingMovement.created_by,
-        },
-      }),
+      body: JSON.stringify({ accessToken, movement: payload }),
     });
 
     setSavingMovement(false);
     if (res.ok) {
+      // Optimistic update: merge the saved movement into local state
+      // immediately so KPIs/cards/charts/timeline/list all reflect it in
+      // this same render, instead of waiting on a fresh Supabase round
+      // trip. fetchAll() below still runs to reconcile with the server's
+      // canonical row (real id/created_at/profiles for a brand-new insert).
+      setMovements((prev) => {
+        if (!prev) return prev;
+        if (payload.id) {
+          return prev.map((m) => (m.id === payload.id ? { ...m, ...payload, id: m.id } : m));
+        }
+        const optimistic: BudgetMovement = {
+          ...payload,
+          id: `optimistic-${Date.now()}`,
+          created_at: new Date().toISOString(),
+          profiles: null,
+        };
+        return [optimistic, ...prev];
+      });
       setEditingMovement(null);
       fetchAll();
       toast.success("Movimiento guardado correctamente.");

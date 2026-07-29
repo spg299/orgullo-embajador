@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Drawer } from "@/components/ui/admin/Drawer";
-import { Input } from "@/components/ui/admin/Input";
+import { CurrencyInput } from "@/components/ui/admin/CurrencyInput";
 import { Textarea } from "@/components/ui/admin/Textarea";
 import Button from "@/components/ui/Button";
 import type { Budget, BudgetSummary } from "@/data/finance";
@@ -31,37 +31,26 @@ function MemberForm({
   onClose: () => void;
   onSave: (edits: MemberEdits) => void;
 }) {
-  const [presupuesto, setPresupuesto] = useState(String(budget.presupuesto_asignado));
-  const [ganado, setGanado] = useState(String(summary.ganado));
-  const [gastado, setGastado] = useState(String(summary.gastado));
+  const [presupuesto, setPresupuesto] = useState(budget.presupuesto_asignado);
+  const [ganado, setGanado] = useState(summary.ganado);
+  const [gastado, setGastado] = useState(summary.gastado);
   const [observaciones, setObservaciones] = useState(budget.observaciones ?? "");
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    onSave({
-      presupuesto: Number(presupuesto) || 0,
-      ganado: Number(ganado) || 0,
-      gastado: Number(gastado) || 0,
-      observaciones,
-    });
+    onSave({ presupuesto, ganado, gastado, observaciones });
   }
 
-  const ganadoChanged = Number(ganado) !== summary.ganado;
-  const gastadoChanged = Number(gastado) !== summary.gastado;
+  const ganadoChanged = ganado !== summary.ganado;
+  const gastadoChanged = gastado !== summary.gastado;
 
   return (
     <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-      <Input
-        label="Presupuesto asignado"
-        type="number"
-        min={0}
-        value={presupuesto}
-        onChange={(e) => setPresupuesto(e.target.value)}
-      />
+      <CurrencyInput label="Presupuesto asignado" value={presupuesto} onChange={setPresupuesto} />
 
       <div className="flex flex-col gap-4 rounded-admin-md bg-admin-bg p-4">
-        <Input label="Ganado (total)" type="number" min={0} value={ganado} onChange={(e) => setGanado(e.target.value)} />
-        <Input label="Gastado (total)" type="number" min={0} value={gastado} onChange={(e) => setGastado(e.target.value)} />
+        <CurrencyInput label="Ganado (total)" value={ganado} onChange={setGanado} />
+        <CurrencyInput label="Gastado (total)" value={gastado} onChange={setGastado} />
         {(ganadoChanged || gastadoChanged) && (
           <p className="text-xs font-medium text-admin-text-muted">
             Al guardar se registrará un movimiento de ajuste automático por la diferencia, para que

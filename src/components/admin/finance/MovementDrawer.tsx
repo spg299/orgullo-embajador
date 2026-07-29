@@ -4,6 +4,7 @@ import type { FormEvent } from "react";
 import { Drawer } from "@/components/ui/admin/Drawer";
 import { Select } from "@/components/ui/admin/Select";
 import { Input } from "@/components/ui/admin/Input";
+import { CurrencyInput } from "@/components/ui/admin/CurrencyInput";
 import { Textarea } from "@/components/ui/admin/Textarea";
 import Button from "@/components/ui/Button";
 import { TrendingUpIcon, TrendingDownIcon } from "@/components/ui/Icons";
@@ -80,14 +81,22 @@ export function MovementDrawer({
             onChange={(e) => onChange({ ...movement, concept: e.target.value })}
           />
 
-          <Input
+          <CurrencyInput
             label="Valor"
-            required
-            type="number"
-            min={0}
+            large
             value={movement.amount ?? 0}
-            onChange={(e) => onChange({ ...movement, amount: Number(e.target.value) })}
+            onChange={(amount) => onChange({ ...movement, amount })}
           />
+
+          {movement.advisor_id && movement.amount ? (
+            <p className="-mt-2 text-center text-xs font-medium text-admin-text-muted">
+              Se registrará como <span className="font-semibold text-admin-text">{(movement.type ?? "gasto") === "ingreso" ? "Ingreso" : "Gasto"}</span> para{" "}
+              <span className="font-semibold text-admin-text">
+                {advisors.find((a) => a.id === movement.advisor_id)?.name}
+              </span>
+              .
+            </p>
+          ) : null}
 
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-admin-text/80">Fecha</span>
