@@ -286,7 +286,7 @@ export default function AdminFinanzasPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-extrabold tracking-tight text-admin-text">
-            💼 Finanzas
+            Finanzas
           </h1>
           <p className="mt-1 text-sm font-medium text-admin-text-muted">
             Presupuesto del grupo: {advisors?.map((a) => a.name).join(", ") || "…"}.

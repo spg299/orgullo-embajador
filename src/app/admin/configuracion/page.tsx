@@ -140,7 +140,7 @@ export default function AdminConfiguracionPage() {
     setShowResetConfirm(false);
     setResetPassword("");
     if (res.ok) {
-      toast.success("Los datos del Dashboard se eliminaron correctamente.");
+      toast.success("El sistema ha sido restablecido correctamente.");
     } else {
       const body = await res.json().catch(() => ({}));
       toast.error(body.error ?? "No se pudo completar la acción.");
@@ -644,21 +644,22 @@ export default function AdminConfiguracionPage() {
             Administración del Dashboard
           </h2>
           <p className="mt-1 text-sm font-medium text-admin-text-muted">
-            Herramienta para eliminar todos los datos estadísticos del Dashboard y comenzar desde cero.
+            Elimina permanentemente todos los datos de prueba (ventas, presupuestos, movimientos
+            financieros y visitantes) antes de poner el sistema en producción. Esta acción no se
+            puede deshacer.
           </p>
 
           <Button
             variant="destructive"
             size="sm"
             className="mt-5"
-            icon={<TrashIcon className="h-4 w-4" />}
             onClick={() => {
               setResetPassword("");
               setPasswordError(null);
               setShowPasswordDialog(true);
             }}
           >
-            🗑️ Borrar datos del Dashboard
+            Restablecer sistema
           </Button>
 
           {accessLogs && accessLogs.length > 0 && (
@@ -739,9 +740,9 @@ export default function AdminConfiguracionPage() {
 
       <ConfirmDialog
         open={showResetConfirm}
-        title="¿Eliminar datos del Dashboard?"
-        description="Esta acción eliminará todas las estadísticas y métricas del Dashboard. Los datos originales (ventas, usuarios, solicitudes y demás registros) NO serán eliminados. Solo se reiniciarán las estadísticas."
-        confirmLabel="Eliminar datos"
+        title="¿Restablecer el sistema?"
+        description="Esta acción eliminará permanentemente todos los datos registrados en el sistema. Esta operación no se puede deshacer."
+        confirmLabel="Restablecer sistema"
         destructive
         loading={resetting}
         onConfirm={handleResetDashboard}
