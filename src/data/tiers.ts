@@ -6,7 +6,7 @@ export interface Tier {
   description: string;
   color: string;
   price: number;
-  availability: "alta" | "media" | "baja" | "agotado";
+  availability: "disponible" | "baja" | "agotado";
 }
 
 // Static fallback — used until fetchTiers() resolves, and if the tiers
@@ -19,7 +19,7 @@ export const tiers: Tier[] = [
     description: "Vista frontal, la más solicitada por la hinchada.",
     color: "#0f3fb0",
     price: 180000,
-    availability: "media",
+    availability: "disponible",
   },
   {
     id: "occidental-alta",
@@ -27,7 +27,7 @@ export const tiers: Tier[] = [
     description: "Vista panorámica cubierta, excelente ángulo.",
     color: "#1a56d6",
     price: 140000,
-    availability: "alta",
+    availability: "disponible",
   },
   {
     id: "oriental",
@@ -35,7 +35,7 @@ export const tiers: Tier[] = [
     description: "Ambiente familiar, sol de la tarde.",
     color: "#cc9a2e",
     price: 120000,
-    availability: "alta",
+    availability: "disponible",
     },
   {
     id: "norte",
@@ -51,13 +51,12 @@ export const tiers: Tier[] = [
     description: "Hinchada visitante y ambiente popular.",
     color: "#4d7bea",
     price: 65000,
-    availability: "alta",
+    availability: "disponible",
   },
 ];
 
 export const availabilityLabels: Record<Tier["availability"], string> = {
-  alta: "Alta disponibilidad",
-  media: "Disponibilidad media",
+  disponible: "Disponible",
   baja: "Últimas boletas",
   agotado: "Agotado",
 };

@@ -2,16 +2,14 @@ import { Tier } from "@/data/tiers";
 import { availabilityLabels } from "@/data/tiers";
 
 const dotClasses: Record<Tier["availability"], string> = {
-  alta: "bg-emerald-500",
-  media: "bg-gold-500",
-  baja: "bg-rose-500",
+  disponible: "bg-emerald-500",
+  baja: "bg-gold-500",
   agotado: "bg-white",
 };
 
 const textClasses: Record<Tier["availability"], string> = {
-  alta: "text-emerald-700 bg-emerald-50",
-  media: "text-gold-600 bg-gold-100",
-  baja: "text-rose-700 bg-rose-50",
+  disponible: "text-emerald-700 bg-emerald-50",
+  baja: "text-gold-600 bg-gold-100",
   agotado: "text-white bg-red-600",
 };
 

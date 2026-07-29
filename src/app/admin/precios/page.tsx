@@ -14,7 +14,7 @@ import { Select } from "@/components/ui/admin/Select";
 import { useToast } from "@/components/ui/admin/Toast";
 import { Badge } from "@/components/ui/admin/Badge";
 
-type Availability = "alta" | "media" | "baja" | "agotado";
+type Availability = "disponible" | "baja" | "agotado";
 
 interface TierRow {
   id: string;
@@ -32,24 +32,19 @@ const emptyTier: TierRow = {
   description: "",
   color: "#0f3fb0",
   price: 0,
-  availability: "alta",
+  availability: "disponible",
   sort_order: 0,
 };
 
 const availabilityLabels: Record<Availability, string> = {
-  alta: "Alta disponibilidad",
-  media: "Disponibilidad media",
+  disponible: "Disponible",
   baja: "Últimas boletas",
   agotado: "Agotado",
 };
 
-const availabilityBadgeVariant: Record<
-  Availability,
-  "success" | "warning" | "info" | "danger"
-> = {
-  alta: "success",
-  media: "warning",
-  baja: "info",
+const availabilityBadgeVariant: Record<Availability, "success" | "warning" | "danger"> = {
+  disponible: "success",
+  baja: "warning",
   agotado: "danger",
 };
 
@@ -289,8 +284,7 @@ export default function AdminPreciosPage() {
               value={editing.availability}
               onChange={(e) => setEditing({ ...editing, availability: e.target.value as Availability })}
             >
-              <option value="alta">Alta disponibilidad</option>
-              <option value="media">Disponibilidad media</option>
+              <option value="disponible">Disponible</option>
               <option value="baja">Últimas boletas</option>
               <option value="agotado">Agotado</option>
             </Select>

@@ -7,10 +7,8 @@ import { HomeIcon, InstagramIcon, LinkedInIcon } from "@/components/ui/Icons";
 import { siteSettings as defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
 
 const helpLinks = [
-  { label: "Preguntas frecuentes", href: "#" },
+  { label: "Preguntas frecuentes", href: "/#preguntas-frecuentes" },
   { label: "Cómo comprar", href: "/#como-comprar" },
-  { label: "Política de cambios", href: "#" },
-  { label: "Términos y condiciones", href: "#" },
 ];
 
 function scrollToTop(e: MouseEvent<HTMLAnchorElement>) {

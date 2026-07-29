@@ -6,6 +6,7 @@ import HomeMatchesCalendar from "@/components/home/HomeMatchesCalendar";
 import Benefits from "@/components/home/Benefits";
 import HowItWorks from "@/components/home/HowItWorks";
 import Testimonials from "@/components/home/Testimonials";
+import FAQ from "@/components/home/FAQ";
 
 export default function Home() {
   return (
@@ -18,6 +19,7 @@ export default function Home() {
         <Benefits />
         <HowItWorks />
         <Testimonials />
+        <FAQ />
       </main>
       <Footer />
     </>
