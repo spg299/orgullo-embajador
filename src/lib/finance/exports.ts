@@ -1,8 +1,8 @@
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { formatCOP } from "@/lib/format";
-import type { BudgetMovement } from "@/data/finance";
+import { formatSignedCOP } from "@/lib/format";
+import { movementEffect, type BudgetMovement } from "@/data/finance";
 import type { Advisor } from "@/data/advisors";
 
 function movementRows(movements: BudgetMovement[], advisors: Advisor[]) {
@@ -12,7 +12,7 @@ function movementRows(movements: BudgetMovement[], advisors: Advisor[]) {
     Integrante: nameFor(m.advisor_id),
     Tipo: m.type === "ingreso" ? "Ingreso" : "Gasto",
     Concepto: m.concept,
-    Valor: m.amount,
+    Valor: movementEffect(m),
     Observaciones: m.observations ?? "",
     Autor: m.profiles?.full_name || m.profiles?.email || "—",
   }));
@@ -38,7 +38,7 @@ export function exportMovementsToPdf(movements: BudgetMovement[], advisors: Advi
     r.Integrante,
     r.Tipo,
     r.Concepto,
-    formatCOP(r.Valor),
+    formatSignedCOP(r.Valor),
     r.Observaciones,
     r.Autor,
   ]);

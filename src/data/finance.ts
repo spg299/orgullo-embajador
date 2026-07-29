@@ -29,6 +29,16 @@ export interface BudgetSummary {
   disponible: number;
 }
 
+// A movement's net effect on balance: positive for money in, negative for
+// money out. Movements normally carry a positive amount, but a manual
+// balance adjustment (see EditMemberDrawer) can carry a negative amount to
+// correct a total without editing or deleting historical rows — this
+// formula makes that correction display with the right sign/color
+// everywhere (timeline, transaction list, exports) without special-casing.
+export function movementEffect(m: Pick<BudgetMovement, "type" | "amount">): number {
+  return m.type === "ingreso" ? m.amount : -m.amount;
+}
+
 // The one formula for every derived financial number — reused by the
 // budget cards, KPI row, charts, and exports so nothing can drift.
 // disponible = presupuesto_asignado + ganado - gastado: the starting
