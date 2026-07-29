@@ -11,12 +11,20 @@ const VARIANT_STYLES: Record<BadgeVariant, string> = {
   info: "bg-royal-100 text-royal-600 dark:bg-royal-400/15 dark:text-royal-300",
 };
 
-export function Badge({ variant, children }: { variant: BadgeVariant; children: ReactNode }) {
+export function Badge({
+  variant,
+  children,
+  dot = true,
+}: {
+  variant: BadgeVariant;
+  children: ReactNode;
+  dot?: boolean;
+}) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${VARIANT_STYLES[variant]}`}
     >
-      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {dot && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
       {children}
     </span>
   );

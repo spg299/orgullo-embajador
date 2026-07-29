@@ -175,7 +175,10 @@ export default function AdminPreciosPage() {
       header: "Disponibilidad",
       sortable: true,
       render: (tier) => (
-        <Badge variant={availabilityBadgeVariant[tier.availability]}>
+        <Badge
+          variant={availabilityBadgeVariant[tier.availability]}
+          dot={tier.availability !== "disponible"}
+        >
           {availabilityLabels[tier.availability]}
         </Badge>
       ),
