@@ -47,18 +47,37 @@ async function fetchAdvisors(): Promise<Advisor[]> {
   return res.ok ? (body.advisors as Advisor[]) : [];
 }
 
+function applySalePatch(
+  sale: Sale,
+  patch: { status?: SaleStatus; advisor_id?: string | null; delivered?: boolean },
+): Sale {
+  return {
+    ...sale,
+    ...(patch.status !== undefined ? { status: patch.status } : {}),
+    ...(patch.advisor_id !== undefined ? { advisor_id: patch.advisor_id } : {}),
+    ...(patch.delivered !== undefined
+      ? { delivered_at: patch.delivered ? new Date().toISOString() : null }
+      : {}),
+  };
+}
+
 export default function AdminVentasPage() {
   const toast = useToast();
   const [result, setResult] = useState<VentasResult | null>(null);
   const [advisors, setAdvisors] = useState<Advisor[]>([]);
+  const [showCancelled, setShowCancelled] = useState(false);
   const loading = result === null;
   const sales = result?.sales ?? [];
   const error = result?.error ?? null;
   const myAdvisorId = result?.me.advisorId ?? null;
   const activeAdvisors = advisors.filter((a) => a.active);
 
+  // Cancelled sales are never deleted (kept for the Dashboard, reports, and
+  // audit history) — they're just hidden from this working view by default.
+  const visibleSales = showCancelled ? sales : sales.filter((s) => s.status !== "cancelada");
+
   const table = useDataTable<Sale>({
-    data: sales,
+    data: visibleSales,
     searchableFields: ["buyer_full_name", "buyer_email", "match_label"],
     initialSort: { field: "created_at", direction: "desc" },
   });
@@ -76,6 +95,16 @@ export default function AdminVentasPage() {
     sale: Sale,
     patch: { status?: SaleStatus; advisor_id?: string | null; delivered?: boolean },
   ) {
+    // Update local state immediately so cancelling (or any other change)
+    // reflects instantly — e.g. a sale moved to "Cancelada" disappears
+    // from the default view right away, with no page reload or wait on
+    // the network round trip.
+    setResult((prev) =>
+      prev
+        ? { ...prev, sales: prev.sales.map((s) => (s.id === sale.id ? applySalePatch(s, patch) : s)) }
+        : prev,
+    );
+
     const accessToken = await getAccessToken();
     const res = await fetch("/api/admin/ventas", {
       method: "POST",
@@ -83,11 +112,11 @@ export default function AdminVentasPage() {
       body: JSON.stringify({ accessToken, id: sale.id, ...patch }),
     });
     if (res.ok) {
-      reload();
       toast.success("Venta actualizada.");
     } else {
       const body = await res.json().catch(() => ({}));
       toast.error(body.error ?? "No se pudo actualizar la venta.");
+      reload(); // revert the optimistic update back to the server's truth
     }
   }
 
@@ -212,6 +241,8 @@ export default function AdminVentasPage() {
       <h1 className="font-display text-2xl font-extrabold tracking-tight text-admin-text">Ventas</h1>
       <p className="mt-1 text-sm font-medium text-admin-text-muted">
         Solicitudes generadas desde el checkout público. Actualiza el estado y asigna un asesor.
+        Las ventas canceladas se ocultan de esta vista, pero se conservan para el Dashboard y el
+        historial.
       </p>
 
       {error ? (
@@ -227,9 +258,22 @@ export default function AdminVentasPage() {
             table={table}
             keyField="id"
             loading={loading}
-            emptyMessage="Aún no hay ventas registradas."
+            emptyMessage={
+              showCancelled ? "Aún no hay ventas registradas." : "No hay ventas activas por mostrar."
+            }
             searchPlaceholder="Buscar por comprador, correo o partido..."
             columns={columns}
+            toolbarExtra={
+              <label className="flex items-center gap-2 text-sm font-medium text-admin-text-muted">
+                <input
+                  type="checkbox"
+                  checked={showCancelled}
+                  onChange={(e) => setShowCancelled(e.target.checked)}
+                  className="h-4 w-4 rounded border-admin-border text-royal-500 focus:ring-2 focus:ring-royal-400/40"
+                />
+                Mostrar canceladas
+              </label>
+            }
           />
         </div>
       )}
