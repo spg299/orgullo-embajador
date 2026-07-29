@@ -30,9 +30,9 @@ export function CurrencyInput({
       {label && <span className="text-sm font-medium text-admin-text/80">{label}</span>}
       <div className="relative">
         <span
-          className={`pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-semibold text-admin-text-muted ${large ? "text-2xl" : "text-sm"}`}
+          className={`pointer-events-none absolute left-4 top-1/2 flex -translate-y-1/2 items-baseline gap-1 font-semibold text-admin-text-muted ${large ? "text-base" : "text-xs"}`}
         >
-          $
+          COP <span className={large ? "text-2xl" : "text-sm"}>$</span>
         </span>
         <input
           type="text"
@@ -41,17 +41,12 @@ export function CurrencyInput({
           value={display}
           onChange={handleChange}
           placeholder="0"
-          className={`w-full rounded-admin-md border border-admin-border bg-admin-surface pr-14 text-admin-text transition-colors focus:border-royal-400 focus:outline-none focus:ring-2 focus:ring-royal-400/40 ${
+          className={`w-full rounded-admin-md border border-admin-border bg-admin-surface text-admin-text transition-colors focus:border-royal-400 focus:outline-none focus:ring-2 focus:ring-royal-400/40 ${
             large
-              ? "py-4 pl-10 text-center font-display text-3xl font-extrabold tracking-tight"
-              : "py-2.5 pl-8 text-sm"
+              ? "py-4 pl-24 font-display text-3xl font-extrabold tracking-tight"
+              : "py-2.5 pl-16 text-sm"
           }`}
         />
-        <span
-          className={`pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 font-semibold text-admin-text-muted ${large ? "text-xs" : "text-xs"}`}
-        >
-          COP
-        </span>
       </div>
     </label>
   );

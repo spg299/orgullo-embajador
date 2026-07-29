@@ -14,12 +14,14 @@ const ACCENT_STYLES: Record<Accent, string> = {
 export function KpiCard({
   label,
   value,
+  description,
   trend,
   icon,
   accent = "neutral",
 }: {
   label: string;
   value: string | number;
+  description?: string;
   trend?: { percent: number | null; direction: "up" | "down" };
   icon?: ReactNode;
   accent?: Accent;
@@ -57,6 +59,7 @@ export function KpiCard({
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider text-admin-text-muted">{label}</p>
         <p className="mt-1 font-display text-2xl font-extrabold tracking-tight text-admin-text">{value}</p>
+        {description && <p className="mt-1 text-xs font-medium text-admin-text-muted">{description}</p>}
       </div>
     </motion.div>
   );

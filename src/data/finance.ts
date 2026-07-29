@@ -39,6 +39,45 @@ export function movementEffect(m: Pick<BudgetMovement, "type" | "amount">): numb
   return m.type === "ingreso" ? m.amount : -m.amount;
 }
 
+export type Period = "today" | "week" | "month" | "year" | "custom";
+
+function toISODate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+// Resolves a quick-select period into an inclusive [from, to] date range
+// (YYYY-MM-DD, matching movement_date's format so string comparison works
+// directly). "custom" passes the caller-supplied range through unchanged.
+export function resolvePeriodRange(
+  period: Period,
+  custom: { from: string; to: string },
+): { from: string; to: string } {
+  const now = new Date();
+  const today = toISODate(now);
+
+  if (period === "today") return { from: today, to: today };
+
+  if (period === "week") {
+    const day = now.getDay();
+    const diffToMonday = day === 0 ? 6 : day - 1;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - diffToMonday);
+    return { from: toISODate(monday), to: today };
+  }
+
+  if (period === "month") {
+    const first = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { from: toISODate(first), to: today };
+  }
+
+  if (period === "year") {
+    const first = new Date(now.getFullYear(), 0, 1);
+    return { from: toISODate(first), to: today };
+  }
+
+  return custom;
+}
+
 // The one formula for every derived financial number — reused by the
 // budget cards, KPI row, charts, and exports so nothing can drift.
 // disponible = presupuesto_asignado + ganado - gastado: the starting

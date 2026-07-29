@@ -13,7 +13,7 @@ const SORT_OPTIONS: { field: keyof BudgetMovement; label: string }[] = [
   { field: "amount", label: "Valor" },
 ];
 
-export function TransactionList({
+export function TransactionList<T extends BudgetMovement>({
   table,
   advisors,
   loading,
@@ -21,12 +21,12 @@ export function TransactionList({
   onEdit,
   onDelete,
 }: {
-  table: ReturnType<typeof useDataTable<BudgetMovement>>;
+  table: ReturnType<typeof useDataTable<T>>;
   advisors: Advisor[];
   loading: boolean;
   canEdit: boolean;
-  onEdit: (m: BudgetMovement) => void;
-  onDelete: (m: BudgetMovement) => void;
+  onEdit: (m: T) => void;
+  onDelete: (m: T) => void;
 }) {
   const { search, setSearch, sort, toggleSort, page, pageCount, setPage, pagedData, resultCount } = table;
   const advisorName = (id: string) => advisors.find((a) => a.id === id)?.name ?? "—";
@@ -40,7 +40,7 @@ export function TransactionList({
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por concepto u observaciones..."
+            placeholder="Buscar por integrante, concepto, fecha o tipo..."
             className="w-full rounded-admin-md border border-admin-border bg-admin-surface py-2 pl-9 pr-3 text-sm text-admin-text placeholder:text-admin-text-muted/60 focus:border-royal-400 focus:outline-none focus:ring-2 focus:ring-royal-400/40"
           />
         </div>
@@ -108,8 +108,16 @@ export function TransactionList({
                   </span>
                   <span className="truncate text-xs font-medium text-admin-text-muted">{advisorName(m.advisor_id)}</span>
                 </div>
-                <span className="hidden w-20 shrink-0 text-xs font-medium text-admin-text-muted md:block">
-                  {new Date(`${m.movement_date}T00:00:00`).toLocaleDateString("es-CO", { day: "numeric", month: "short" })}
+                <div className="hidden w-28 shrink-0 flex-col md:flex">
+                  <span className="text-xs font-medium text-admin-text-muted">
+                    {new Date(`${m.movement_date}T00:00:00`).toLocaleDateString("es-CO", { day: "numeric", month: "short" })}
+                  </span>
+                  <span className="text-[11px] text-admin-text-muted/70">
+                    {new Date(m.created_at).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" })}
+                  </span>
+                </div>
+                <span className="hidden w-28 shrink-0 truncate text-xs font-medium text-admin-text-muted lg:block">
+                  {m.profiles?.full_name || m.profiles?.email || "—"}
                 </span>
                 <span className={`w-28 shrink-0 text-right text-sm font-bold ${positive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}`}>
                   {formatSignedCOP(effect)}

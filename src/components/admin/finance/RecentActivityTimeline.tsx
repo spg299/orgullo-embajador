@@ -52,8 +52,19 @@ export function RecentActivityTimeline({
               </span>
               <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-admin-text">{m.concept}</p>
-                  <div className="mt-0.5 flex items-center gap-2 text-xs font-medium text-admin-text-muted">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-semibold text-admin-text">{m.concept}</p>
+                    <span
+                      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                        positive
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+                          : "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300"
+                      }`}
+                    >
+                      {m.type === "ingreso" ? "Ingreso" : "Gasto"}
+                    </span>
+                  </div>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-medium text-admin-text-muted">
                     <span
                       className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
                       style={{ backgroundColor: advisorColor(m.advisor_id) }}
@@ -64,6 +75,14 @@ export function RecentActivityTimeline({
                       day: "numeric",
                       month: "short",
                     })}
+                    <span aria-hidden="true">·</span>
+                    {new Date(m.created_at).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" })}
+                    {(m.profiles?.full_name || m.profiles?.email) && (
+                      <>
+                        <span aria-hidden="true">·</span>
+                        {m.profiles.full_name || m.profiles.email}
+                      </>
+                    )}
                   </div>
                 </div>
                 <span className={`shrink-0 text-sm font-bold ${positive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}`}>
