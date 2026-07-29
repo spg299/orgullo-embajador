@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase/client";
 import Button from "@/components/ui/Button";
 import { DataTable, type DataTableColumn } from "@/components/ui/admin/DataTable";
 import { useDataTable } from "@/components/ui/admin/useDataTable";
+import { Badge } from "@/components/ui/admin/Badge";
 import { useToast } from "@/components/ui/admin/Toast";
 import { formatCOP } from "@/lib/format";
 import { SALE_STATUSES, STATUS_LABELS, type Sale, type SaleStatus } from "@/data/sales";
@@ -71,7 +72,10 @@ export default function AdminVentasPage() {
     reload();
   }, []);
 
-  async function updateSale(sale: Sale, patch: { status?: SaleStatus; advisor_id?: string | null }) {
+  async function updateSale(
+    sale: Sale,
+    patch: { status?: SaleStatus; advisor_id?: string | null; delivered?: boolean },
+  ) {
     const accessToken = await getAccessToken();
     const res = await fetch("/api/admin/ventas", {
       method: "POST",
@@ -138,6 +142,29 @@ export default function AdminVentasPage() {
           ))}
         </select>
       ),
+    },
+    {
+      key: "delivered_at",
+      header: "Entrega",
+      render: (s) =>
+        s.delivered_at ? (
+          <button
+            type="button"
+            title={`Entregadas el ${new Date(s.delivered_at).toLocaleDateString("es-CO")}. Clic para desmarcar.`}
+            onClick={() => updateSale(s, { delivered: false })}
+            className="cursor-pointer"
+          >
+            <Badge variant="success">Entregado</Badge>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => updateSale(s, { delivered: true })}
+            className="whitespace-nowrap text-xs font-semibold text-royal-500 hover:text-royal-600"
+          >
+            Marcar entregado
+          </button>
+        ),
     },
     {
       key: "advisor_id",

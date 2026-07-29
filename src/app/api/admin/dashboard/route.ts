@@ -24,9 +24,23 @@ function dayKey(iso: string) {
 }
 
 function revenueDate(sale: SaleRow): string | null {
-  if (sale.status === "confirmada") return sale.confirmed_at ?? sale.updated_at;
-  if (sale.status === "entregada") return sale.delivered_at ?? sale.updated_at;
-  return null;
+  return sale.status === "confirmada" ? (sale.confirmed_at ?? sale.updated_at) : null;
+}
+
+// Delivery is tracked via delivered_at, independent of status — a sale
+// stays "confirmada" whether or not it's been delivered yet.
+function saleEventLabel(sale: SaleRow): string {
+  if (sale.delivered_at) {
+    const deliveredTime = new Date(sale.delivered_at).getTime();
+    const confirmedTime = sale.confirmed_at ? new Date(sale.confirmed_at).getTime() : -Infinity;
+    const cancelledTime = sale.cancelled_at ? new Date(sale.cancelled_at).getTime() : -Infinity;
+    if (deliveredTime >= confirmedTime && deliveredTime >= cancelledTime) {
+      return `Boletas entregadas — ${sale.match_label}`;
+    }
+  }
+  if (sale.status === "cancelada") return `Venta cancelada — ${sale.match_label}`;
+  if (sale.status === "confirmada") return `Venta confirmada — ${sale.match_label}`;
+  return `Nueva solicitud — ${sale.match_label}`;
 }
 
 function trend(current: number, previous: number): { percent: number | null; direction: "up" | "down" } {
@@ -100,9 +114,7 @@ export async function POST(request: NextRequest) {
 
   function deliveredQuantityInPeriod(list: SaleRow[], from: Date, to: Date) {
     return list.reduce((sum, s) => {
-      if (s.status === "entregada" && s.delivered_at && inRange(s.delivered_at, from, to)) {
-        return sum + s.quantity;
-      }
+      if (s.delivered_at && inRange(s.delivered_at, from, to)) return sum + s.quantity;
       return sum;
     }, 0);
   }
@@ -184,16 +196,7 @@ export async function POST(request: NextRequest) {
     .map((s) => ({
       type: "sale" as const,
       status: s.status,
-      label:
-        s.status === "solicitud"
-          ? `Nueva solicitud — ${s.match_label}`
-          : s.status === "en_proceso"
-            ? `Venta en proceso — ${s.match_label}`
-            : s.status === "confirmada"
-              ? `Venta confirmada — ${s.match_label}`
-              : s.status === "entregada"
-                ? `Boletas entregadas — ${s.match_label}`
-                : `Venta cancelada — ${s.match_label}`,
+      label: saleEventLabel(s),
       timestamp: s.updated_at,
     }));
 

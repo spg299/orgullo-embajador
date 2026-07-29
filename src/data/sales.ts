@@ -1,26 +1,17 @@
-export type SaleStatus = "solicitud" | "en_proceso" | "confirmada" | "entregada" | "cancelada";
+// Delivery is intentionally not a status — see Sale.delivered_at below.
+export type SaleStatus = "solicitud" | "confirmada" | "cancelada";
 
-export const SALE_STATUSES: SaleStatus[] = [
-  "solicitud",
-  "en_proceso",
-  "confirmada",
-  "entregada",
-  "cancelada",
-];
+export const SALE_STATUSES: SaleStatus[] = ["solicitud", "confirmada", "cancelada"];
 
 export const STATUS_LABELS: Record<SaleStatus, string> = {
   solicitud: "Solicitud",
-  en_proceso: "En proceso",
   confirmada: "Confirmada",
-  entregada: "Entregada",
   cancelada: "Cancelada",
 };
 
 export const STATUS_BADGE_VARIANT: Record<SaleStatus, "success" | "neutral" | "warning" | "danger" | "info"> = {
   solicitud: "info",
-  en_proceso: "warning",
   confirmada: "success",
-  entregada: "success",
   cancelada: "danger",
 };
 
@@ -28,9 +19,7 @@ export const STATUS_BADGE_VARIANT: Record<SaleStatus, "success" | "neutral" | "w
 // (Recharts needs hex/rgb values, not Tailwind classes, for SVG fill/stroke).
 export const STATUS_CHART_COLORS: Record<SaleStatus, string> = {
   solicitud: "#3b82f6",
-  en_proceso: "#f59e0b",
   confirmada: "#10b981",
-  entregada: "#059669",
   cancelada: "#ef4444",
 };
 
