@@ -33,26 +33,14 @@ export default function PurchaseFlow({ match }: { match: Match }) {
     fetchTiers().then(setBaseTiers);
   }, []);
 
-  // Per-match price overrides set from /admin/matches take priority over the
-  // general prices from /admin/precios; any tier without an override just
-  // keeps its default price.
-  const effectiveTiers = useMemo(
-    () =>
-      baseTiers.map((tier) => ({
-        ...tier,
-        price: match.tierPrices?.[tier.id] ?? tier.price,
-      })),
-    [baseTiers, match.tierPrices],
-  );
-
   const selections = useMemo(
     () =>
-      effectiveTiers
+      baseTiers
         .map((tier) => ({ tier, quantity: quantities[tier.id] ?? 0 }))
         .filter(
           (selection) => selection.quantity > 0 && selection.tier.availability !== "agotado",
         ),
-    [effectiveTiers, quantities],
+    [baseTiers, quantities],
   );
 
   const subtotal = selections.reduce(
@@ -149,7 +137,7 @@ export default function PurchaseFlow({ match }: { match: Match }) {
               </p>
 
               <div className="mt-6 space-y-4">
-                {effectiveTiers.map((tier) => (
+                {baseTiers.map((tier) => (
                   <TierRow
                     key={tier.id}
                     tier={tier}

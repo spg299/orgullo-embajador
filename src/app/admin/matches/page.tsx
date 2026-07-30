@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { supabase } from "@/lib/supabase/client";
 import Button from "@/components/ui/Button";
 import { PencilIcon, TrashIcon, UploadIcon } from "@/components/ui/Icons";
-import { tiers as staticTiers, fetchTiers } from "@/data/tiers";
 import { DataTable, type DataTableColumn } from "@/components/ui/admin/DataTable";
 import { useDataTable } from "@/components/ui/admin/useDataTable";
 import { Dialog } from "@/components/ui/admin/Dialog";
@@ -29,7 +28,6 @@ interface MatchRow {
   status: MatchStatus;
   buy_link: string | null;
   show_in_hero: boolean;
-  tier_prices: Record<string, number> | null;
   sort_order: number;
   description: string | null;
   image_url: string | null;
@@ -46,7 +44,6 @@ const emptyMatch: MatchRow = {
   status: "upcoming",
   buy_link: "",
   show_in_hero: true,
-  tier_prices: null,
   sort_order: 0,
   description: "",
   image_url: "",
@@ -74,7 +71,6 @@ export default function AdminMatchesPage() {
   const [uploadingCrest, setUploadingCrest] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<MatchRow | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [tiers, setTiers] = useState(staticTiers);
   const crestInputRef = useRef<HTMLInputElement>(null);
   const loading = matches === null;
 
@@ -83,10 +79,6 @@ export default function AdminMatchesPage() {
     searchableFields: ["rival", "stadium"],
     initialSort: { field: "sort_order", direction: "asc" },
   });
-
-  useEffect(() => {
-    fetchTiers().then(setTiers);
-  }, []);
 
   async function fetchMatches(): Promise<MatchRow[]> {
     const { data, error } = await supabase.from("matches").select("*").order("sort_order");
@@ -378,36 +370,6 @@ export default function AdminMatchesPage() {
               value={editing.buy_link ?? ""}
               onChange={(e) => setEditing({ ...editing, buy_link: e.target.value })}
             />
-
-            <fieldset className="rounded-admin-md border border-admin-border p-4">
-              <legend className="px-1 text-sm font-semibold text-admin-text">
-                Precios por localidad (opcional — vacío usa el precio general)
-              </legend>
-              <div className="mt-2 grid grid-cols-2 gap-3">
-                {tiers.map((tier) => (
-                  <label key={tier.id} className="flex flex-col gap-1">
-                    <span className="text-xs font-medium text-admin-text-muted">{tier.name}</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={editing.tier_prices?.[tier.id] ?? ""}
-                      placeholder={String(tier.price)}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setEditing({
-                          ...editing,
-                          tier_prices: {
-                            ...(editing.tier_prices ?? {}),
-                            ...(value ? { [tier.id]: Number(value) } : {}),
-                          },
-                        });
-                      }}
-                      className="rounded-admin-sm border border-admin-border bg-admin-surface px-3 py-2 text-sm text-admin-text focus:border-royal-400 focus:outline-none focus:ring-2 focus:ring-royal-400/40"
-                    />
-                  </label>
-                ))}
-              </div>
-            </fieldset>
 
             <Checkbox
               label="Mostrar en el Hero"

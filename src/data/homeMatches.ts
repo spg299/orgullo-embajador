@@ -15,8 +15,6 @@ export interface HomeMatch {
   buyLink?: string;
   /** Controlled from /admin/hero. Defaults to true when absent. */
   showInHero?: boolean;
-  /** Optional per-match price override, keyed by tier id (data/tiers.ts). */
-  tierPrices?: Record<string, number> | null;
   /** Optional editorial description, set from /admin/matches. */
   description?: string;
   /** Optional banner image for the match, set from /admin/matches. */
@@ -144,7 +142,6 @@ interface MatchRow {
   status: MatchStatus;
   buy_link: string | null;
   show_in_hero: boolean;
-  tier_prices: Record<string, number> | null;
   description: string | null;
   image_url: string | null;
 }
@@ -161,7 +158,6 @@ function fromRow(row: MatchRow): HomeMatch {
     status: row.status,
     buyLink: row.buy_link ?? undefined,
     showInHero: row.show_in_hero,
-    tierPrices: row.tier_prices,
     description: row.description ?? undefined,
     imageUrl: row.image_url ?? undefined,
   };
@@ -175,7 +171,7 @@ export async function fetchHomeMatches(): Promise<HomeMatch[]> {
   const { data, error } = await supabase
     .from("matches")
     .select(
-      "id, rival, rival_initial, rival_crest, match_date, match_time, stadium, status, buy_link, show_in_hero, tier_prices, description, image_url",
+      "id, rival, rival_initial, rival_crest, match_date, match_time, stadium, status, buy_link, show_in_hero, description, image_url",
     )
     .order("sort_order");
 
@@ -187,7 +183,7 @@ export async function fetchHomeMatchById(id: string): Promise<HomeMatch | null> 
   const { data, error } = await supabase
     .from("matches")
     .select(
-      "id, rival, rival_initial, rival_crest, match_date, match_time, stadium, status, buy_link, show_in_hero, tier_prices, description, image_url",
+      "id, rival, rival_initial, rival_crest, match_date, match_time, stadium, status, buy_link, show_in_hero, description, image_url",
     )
     .eq("id", id)
     .single();
