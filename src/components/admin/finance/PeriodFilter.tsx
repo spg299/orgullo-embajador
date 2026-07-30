@@ -33,7 +33,7 @@ export function PeriodFilter({
             key={opt.value}
             type="button"
             onClick={() => onPeriodChange(opt.value)}
-            className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+            className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-400/40 ${
               period === opt.value
                 ? "bg-admin-surface text-admin-text shadow-admin-xs"
                 : "text-admin-text-muted hover:text-admin-text"
@@ -49,14 +49,14 @@ export function PeriodFilter({
             type="date"
             value={customFrom}
             onChange={(e) => onCustomFromChange(e.target.value)}
-            className="rounded-admin-md border border-admin-border bg-admin-surface px-3 py-1.5 text-xs text-admin-text"
+            className="rounded-admin-md border border-admin-border bg-admin-surface px-3 py-1.5 text-xs text-admin-text focus:border-royal-400 focus:outline-none focus:ring-2 focus:ring-royal-400/40"
           />
           <span className="text-xs text-admin-text-muted">hasta</span>
           <input
             type="date"
             value={customTo}
             onChange={(e) => onCustomToChange(e.target.value)}
-            className="rounded-admin-md border border-admin-border bg-admin-surface px-3 py-1.5 text-xs text-admin-text"
+            className="rounded-admin-md border border-admin-border bg-admin-surface px-3 py-1.5 text-xs text-admin-text focus:border-royal-400 focus:outline-none focus:ring-2 focus:ring-royal-400/40"
           />
         </div>
       )}

@@ -46,7 +46,7 @@ function MemberForm({
 
   return (
     <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-      <CurrencyInput label="Presupuesto asignado" value={presupuesto} onChange={setPresupuesto} />
+      <CurrencyInput label="Presupuesto asignado" autoFocus value={presupuesto} onChange={setPresupuesto} />
 
       <div className="flex flex-col gap-4 rounded-admin-md bg-admin-bg p-4">
         <CurrencyInput label="Ganado (total)" value={ganado} onChange={setGanado} />

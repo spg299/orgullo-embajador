@@ -53,7 +53,7 @@ export function TransactionList<T extends BudgetMovement>({
                 key={opt.field}
                 type="button"
                 onClick={() => toggleSort(opt.field)}
-                className={`flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors ${
+                className={`flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-400/40 ${
                   active ? "bg-admin-bg text-admin-text" : "hover:text-admin-text"
                 }`}
               >
@@ -128,7 +128,7 @@ export function TransactionList<T extends BudgetMovement>({
                       type="button"
                       aria-label="Editar"
                       onClick={() => onEdit(m)}
-                      className="flex h-8 w-8 items-center justify-center rounded-full text-admin-text-muted transition-colors hover:bg-admin-border hover:text-admin-text"
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-admin-text-muted transition-colors hover:bg-admin-border hover:text-admin-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-400/40"
                     >
                       <PencilIcon className="h-4 w-4" />
                     </button>
@@ -136,7 +136,7 @@ export function TransactionList<T extends BudgetMovement>({
                       type="button"
                       aria-label="Eliminar"
                       onClick={() => onDelete(m)}
-                      className="flex h-8 w-8 items-center justify-center rounded-full text-rose-600 transition-colors hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-rose-600 transition-colors hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-400/40 dark:hover:bg-rose-500/10"
                     >
                       <TrashIcon className="h-4 w-4" />
                     </button>
@@ -159,7 +159,7 @@ export function TransactionList<T extends BudgetMovement>({
               aria-label="Página anterior"
               disabled={page <= 1}
               onClick={() => setPage(page - 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-admin-bg disabled:opacity-30"
+              className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-admin-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-400/40 disabled:opacity-30"
             >
               <ChevronLeftIcon className="h-4 w-4" />
             </button>
@@ -168,7 +168,7 @@ export function TransactionList<T extends BudgetMovement>({
               aria-label="Página siguiente"
               disabled={page >= pageCount}
               onClick={() => setPage(page + 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-admin-bg disabled:opacity-30"
+              className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-admin-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-400/40 disabled:opacity-30"
             >
               <ChevronRightIcon className="h-4 w-4" />
             </button>

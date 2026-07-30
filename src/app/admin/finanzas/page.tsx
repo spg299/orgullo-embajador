@@ -436,7 +436,10 @@ export default function AdminFinanzasPage() {
     }
     return Array.from(map.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([month, v]) => ({ month, ...v }));
+      .map(([key, v]) => ({
+        month: new Date(`${key}-01T00:00:00`).toLocaleDateString("es-CO", { month: "short", year: "2-digit" }),
+        ...v,
+      }));
   }, [periodMovements]);
 
   const cashFlowData = useMemo(
@@ -454,7 +457,7 @@ export default function AdminFinanzasPage() {
         <div>
           <h1 className="font-display text-2xl font-extrabold tracking-tight text-admin-text">Finanzas</h1>
           <p className="mt-1 text-sm font-medium text-admin-text-muted">
-            Presupuesto del grupo: {advisors?.map((a) => a.name).join(", ") || "…"}.
+            Presupuesto, ingresos y gastos del grupo, en tiempo real.
           </p>
         </div>
         {!canEdit && (

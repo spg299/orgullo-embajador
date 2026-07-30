@@ -53,7 +53,7 @@ export function MemberCard({
           disabled={!canEdit}
           title={canEdit ? "Editar" : "Solo el administrador financiero puede modificar esta información."}
           onClick={onEdit}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-admin-text-muted opacity-0 transition-all duration-200 hover:bg-admin-bg hover:text-admin-text group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-0 sm:opacity-60"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-admin-text-muted opacity-60 transition-all duration-200 hover:bg-admin-bg hover:text-admin-text focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-400/40 disabled:cursor-not-allowed disabled:opacity-0 sm:opacity-0 sm:group-hover:opacity-100"
         >
           <PencilIcon className="h-4 w-4" />
         </button>

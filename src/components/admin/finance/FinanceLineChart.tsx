@@ -46,7 +46,7 @@ export function FinanceLineChart({ data }: { data: MonthPoint[] }) {
         />
         <Legend wrapperStyle={{ fontSize: 12, color: "var(--admin-text-muted)" }} />
         <Line type="monotone" dataKey="ingresos" name="Ingresos" stroke="#10b981" strokeWidth={2.5} dot={false} />
-        <Line type="monotone" dataKey="gastos" name="Gastos" stroke="#ef4444" strokeWidth={2.5} dot={false} />
+        <Line type="monotone" dataKey="gastos" name="Gastos" stroke="#f43f5e" strokeWidth={2.5} dot={false} />
       </LineChart>
     </ResponsiveContainer>
   );

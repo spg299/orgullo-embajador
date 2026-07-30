@@ -8,9 +8,8 @@ interface Point {
   balance: number;
 }
 
-// Cumulative running balance (ingresos - gastos, month over month) — the
-// filled area reads at a glance whether the group's cash position is
-// trending up or down, not just each month's isolated net.
+// Net monthly flow (ingresos - gastos for that month) — the filled area
+// reads at a glance which months ran a surplus vs. a deficit.
 export function CashFlowAreaChart({ data }: { data: Point[] }) {
   if (data.length === 0) {
     return (
@@ -52,7 +51,7 @@ export function CashFlowAreaChart({ data }: { data: Point[] }) {
           }}
           formatter={(value) => formatCOP(Number(value))}
         />
-        <Area type="monotone" dataKey="balance" name="Balance acumulado" stroke="#0f3fb0" strokeWidth={2.5} fill="url(#cashFlowFill)" />
+        <Area type="monotone" dataKey="balance" name="Flujo neto" stroke="#0f3fb0" strokeWidth={2.5} fill="url(#cashFlowFill)" />
       </AreaChart>
     </ResponsiveContainer>
   );

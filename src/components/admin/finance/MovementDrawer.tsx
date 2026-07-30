@@ -38,6 +38,7 @@ export function MovementDrawer({
         <form className="flex flex-col gap-5" onSubmit={onSubmit}>
           <Select
             label="Integrante"
+            autoFocus
             value={movement.advisor_id ?? ""}
             onChange={(e) => onChange({ ...movement, advisor_id: e.target.value })}
           >
@@ -58,7 +59,7 @@ export function MovementDrawer({
                     key={t}
                     type="button"
                     onClick={() => onChange({ ...movement, type: t })}
-                    className={`flex items-center justify-center gap-2 rounded-admin-md border px-4 py-2.5 text-sm font-semibold transition-colors ${
+                    className={`flex items-center justify-center gap-2 rounded-admin-md border px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-400/40 ${
                       active
                         ? t === "ingreso"
                           ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"

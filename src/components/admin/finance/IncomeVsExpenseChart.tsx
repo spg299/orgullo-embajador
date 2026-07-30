@@ -48,7 +48,7 @@ export function IncomeVsExpenseChart({ data }: { data: Item[] }) {
         />
         <Legend wrapperStyle={{ fontSize: 12, color: "var(--admin-text-muted)" }} />
         <Bar dataKey="ingresos" name="Ingresos" fill="#10b981" radius={[6, 6, 0, 0]} />
-        <Bar dataKey="gastos" name="Gastos" fill="#ef4444" radius={[6, 6, 0, 0]} />
+        <Bar dataKey="gastos" name="Gastos" fill="#f43f5e" radius={[6, 6, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
