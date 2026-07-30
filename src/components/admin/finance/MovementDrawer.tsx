@@ -7,13 +7,14 @@ import { CollapsibleField } from "@/components/ui/admin/CollapsibleField";
 import { Textarea } from "@/components/ui/admin/Textarea";
 import Button from "@/components/ui/Button";
 import { TrendingUpIcon, TrendingDownIcon, CalendarIcon } from "@/components/ui/Icons";
-import { AdvisorPicker } from "@/components/admin/finance/AdvisorPicker";
 import type { BudgetMovement, MovementType } from "@/data/finance";
 import type { Advisor } from "@/data/advisors";
 
+// The advisor is fixed by the profile this drawer was opened from — it is
+// never asked for here, only displayed for context (see MemberProfile).
 export function MovementDrawer({
   movement,
-  advisors,
+  advisor,
   saving,
   error,
   onClose,
@@ -21,7 +22,7 @@ export function MovementDrawer({
   onSubmit,
 }: {
   movement: Partial<BudgetMovement> | null;
-  advisors: Advisor[];
+  advisor: Advisor | null;
   saving: boolean;
   error: string | null;
   onClose: () => void;
@@ -36,7 +37,19 @@ export function MovementDrawer({
       open={movement !== null}
       onClose={onClose}
       title={movement?.id ? "Editar movimiento" : "Nuevo movimiento"}
-      subtitle={movement?.id ? undefined : "Registra un ingreso o un gasto del grupo."}
+      subtitle={
+        advisor && (
+          <span className="flex items-center gap-1.5">
+            <span
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+              style={{ backgroundColor: advisor.color }}
+            >
+              {advisor.name.slice(0, 1).toUpperCase()}
+            </span>
+            Para {advisor.name}
+          </span>
+        )
+      }
     >
       {movement && (
         <form className="flex flex-col gap-7" onSubmit={onSubmit}>
@@ -67,16 +80,11 @@ export function MovementDrawer({
           {/* The number — the actual point of the transaction — as the hero element. */}
           <CurrencyInput
             large
+            autoFocus
             tone={isIngreso ? "positive" : "negative"}
             value={movement.amount ?? 0}
             onChange={(amount) => onChange({ ...movement, amount })}
           />
-
-          {/* Who — a person you tap, not an option you pick from a list. */}
-          <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-admin-text/80">Integrante</span>
-            <AdvisorPicker advisors={advisors} value={movement.advisor_id} onChange={(advisor_id) => onChange({ ...movement, advisor_id })} />
-          </div>
 
           {/* What — reads like a title, not a boxed input. */}
           <input

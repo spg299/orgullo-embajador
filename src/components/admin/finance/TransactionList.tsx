@@ -18,6 +18,7 @@ export function TransactionList<T extends BudgetMovement>({
   advisors,
   loading,
   canEdit,
+  showAdvisor = true,
   onEdit,
   onDelete,
 }: {
@@ -25,6 +26,9 @@ export function TransactionList<T extends BudgetMovement>({
   advisors: Advisor[];
   loading: boolean;
   canEdit: boolean;
+  // Off inside a single member's profile — the column would repeat the
+  // same name on every row.
+  showAdvisor?: boolean;
   onEdit: (m: T) => void;
   onDelete: (m: T) => void;
 }) {
@@ -99,15 +103,17 @@ export function TransactionList<T extends BudgetMovement>({
                     <p className="truncate text-xs font-medium text-admin-text-muted">{m.observations}</p>
                   )}
                 </div>
-                <div className="hidden w-36 shrink-0 items-center gap-2 sm:flex">
-                  <span
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                    style={{ backgroundColor: advisorColor(m.advisor_id) }}
-                  >
-                    {advisorName(m.advisor_id).slice(0, 1).toUpperCase()}
-                  </span>
-                  <span className="truncate text-xs font-medium text-admin-text-muted">{advisorName(m.advisor_id)}</span>
-                </div>
+                {showAdvisor && (
+                  <div className="hidden w-36 shrink-0 items-center gap-2 sm:flex">
+                    <span
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                      style={{ backgroundColor: advisorColor(m.advisor_id) }}
+                    >
+                      {advisorName(m.advisor_id).slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className="truncate text-xs font-medium text-admin-text-muted">{advisorName(m.advisor_id)}</span>
+                  </div>
+                )}
                 <div className="hidden w-28 shrink-0 flex-col md:flex">
                   <span className="text-xs font-medium text-admin-text-muted">
                     {new Date(`${m.movement_date}T00:00:00`).toLocaleDateString("es-CO", { day: "numeric", month: "short" })}

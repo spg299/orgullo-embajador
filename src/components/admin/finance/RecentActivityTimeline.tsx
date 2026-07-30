@@ -10,10 +10,14 @@ export function RecentActivityTimeline({
   movements,
   advisors,
   limit = 8,
+  showAdvisor = true,
 }: {
   movements: BudgetMovement[];
   advisors: Advisor[];
   limit?: number;
+  // Off when the timeline already lives inside a single member's profile —
+  // repeating their name/color on every row would be redundant there.
+  showAdvisor?: boolean;
 }) {
   const recent = movements.slice(0, limit);
   const advisorName = (id: string) => advisors.find((a) => a.id === id)?.name ?? "—";
@@ -65,12 +69,16 @@ export function RecentActivityTimeline({
                     </span>
                   </div>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-medium text-admin-text-muted">
-                    <span
-                      className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: advisorColor(m.advisor_id) }}
-                    />
-                    {advisorName(m.advisor_id)}
-                    <span aria-hidden="true">·</span>
+                    {showAdvisor && (
+                      <>
+                        <span
+                          className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: advisorColor(m.advisor_id) }}
+                        />
+                        {advisorName(m.advisor_id)}
+                        <span aria-hidden="true">·</span>
+                      </>
+                    )}
                     {new Date(`${m.movement_date}T00:00:00`).toLocaleDateString("es-CO", {
                       day: "numeric",
                       month: "short",

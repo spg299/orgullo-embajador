@@ -1,51 +1,22 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/admin/Toast";
 import { ConfirmDialog } from "@/components/ui/admin/ConfirmDialog";
-import { Select } from "@/components/ui/admin/Select";
-import { Skeleton, SkeletonStatCard } from "@/components/ui/admin/Skeleton";
-import { EmptyState } from "@/components/ui/admin/EmptyState";
-import { useDataTable } from "@/components/ui/admin/useDataTable";
-import { KpiCard } from "@/components/ui/admin/KpiCard";
+import { Skeleton } from "@/components/ui/admin/Skeleton";
 import Button from "@/components/ui/Button";
-import {
-  PlusIcon,
-  UploadIcon,
-  DownloadIcon,
-  WalletIcon,
-  ChartBarIcon,
-  TrendingUpIcon,
-  TrendingDownIcon,
-} from "@/components/ui/Icons";
+import { UploadIcon } from "@/components/ui/Icons";
 import { ImportExcelDialog } from "@/components/admin/finance/ImportExcelDialog";
-import { formatCOP } from "@/lib/format";
 import { MemberCard } from "@/components/admin/finance/MemberCard";
+import { MemberProfile } from "@/components/admin/finance/MemberProfile";
 import { EditMemberDrawer, type MemberEdits } from "@/components/admin/finance/EditMemberDrawer";
 import { MovementDrawer } from "@/components/admin/finance/MovementDrawer";
-import { RecentActivityTimeline } from "@/components/admin/finance/RecentActivityTimeline";
-import { TransactionList } from "@/components/admin/finance/TransactionList";
-import { PeriodFilter } from "@/components/admin/finance/PeriodFilter";
-import { FinanceLineChart } from "@/components/admin/finance/FinanceLineChart";
-import { BudgetDonutChart } from "@/components/admin/finance/BudgetDonutChart";
-import { IncomeVsExpenseChart } from "@/components/admin/finance/IncomeVsExpenseChart";
-import { CashFlowAreaChart } from "@/components/admin/finance/CashFlowAreaChart";
-import { TopBarChart } from "@/components/admin/dashboard/TopBarChart";
 import { isFinanceAdmin } from "@/lib/financeAccess";
-import {
-  summarizeBudget,
-  resolvePeriodRange,
-  type Budget,
-  type BudgetMovement,
-  type BudgetSummary,
-  type MovementType,
-  type Period,
-} from "@/data/finance";
+import { summarizeBudget, type Budget, type BudgetMovement, type BudgetSummary, type MovementType } from "@/data/finance";
 import type { Advisor } from "@/data/advisors";
-import { exportMovementsToExcel, exportMovementsToPdf } from "@/lib/finance/exports";
 
 const emptyMovement: Partial<BudgetMovement> = {
   type: "gasto",
@@ -60,20 +31,6 @@ async function getAccessToken() {
   return data.session?.access_token;
 }
 
-function fadeInUp(delay = 0) {
-  return {
-    initial: { opacity: 0, y: 12 },
-    whileInView: { opacity: 1, y: 0 },
-    viewport: { once: true, margin: "-40px" },
-    transition: { duration: 0.4, delay, ease: [0.16, 1, 0.3, 1] as const },
-  };
-}
-
-function pctChange(curr: number, prev: number): number | null {
-  if (prev === 0) return null;
-  return ((curr - prev) / Math.abs(prev)) * 100;
-}
-
 export default function AdminFinanzasPage() {
   const { user } = useAuth();
   const toast = useToast();
@@ -82,6 +39,8 @@ export default function AdminFinanzasPage() {
   const [advisors, setAdvisors] = useState<Advisor[] | null>(null);
   const [budgets, setBudgets] = useState<Budget[] | null>(null);
   const [movements, setMovements] = useState<BudgetMovement[] | null>(null);
+
+  const [selectedAdvisorId, setSelectedAdvisorId] = useState<string | null>(null);
 
   const [editingAdvisor, setEditingAdvisor] = useState<Advisor | null>(null);
   const [savingMember, setSavingMember] = useState(false);
@@ -92,10 +51,6 @@ export default function AdminFinanzasPage() {
   const [pendingDeleteMovement, setPendingDeleteMovement] = useState<BudgetMovement | null>(null);
   const [deletingMovement, setDeletingMovement] = useState(false);
 
-  const [advisorFilter, setAdvisorFilter] = useState("");
-  const [period, setPeriod] = useState<Period>("month");
-  const [customFrom, setCustomFrom] = useState(() => new Date().toISOString().slice(0, 10));
-  const [customTo, setCustomTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [importOpen, setImportOpen] = useState(false);
 
   const loading = advisors === null || budgets === null || movements === null;
@@ -132,39 +87,6 @@ export default function AdminFinanzasPage() {
     });
   }, []);
 
-  // ---- Period + advisor filtering (drives Analíticas + Movimientos only —
-  // Resumen and Integrantes stay cumulative/all-time, since "Disponible" and
-  // "Balance" are running totals, not a flow that makes sense to window). ----
-  const periodRange = useMemo(
-    () => resolvePeriodRange(period, { from: customFrom, to: customTo }),
-    [period, customFrom, customTo],
-  );
-
-  const periodMovements = useMemo(
-    () => (movements ?? []).filter((m) => m.movement_date >= periodRange.from && m.movement_date <= periodRange.to),
-    [movements, periodRange],
-  );
-
-  const filteredMovements = useMemo(() => {
-    if (!advisorFilter) return periodMovements;
-    return periodMovements.filter((m) => m.advisor_id === advisorFilter);
-  }, [periodMovements, advisorFilter]);
-
-  const searchableMovements = useMemo(
-    () =>
-      filteredMovements.map((m) => ({
-        ...m,
-        _advisorName: advisors?.find((a) => a.id === m.advisor_id)?.name ?? "",
-        _typeLabel: m.type === "ingreso" ? "Ingreso" : "Gasto",
-        _dateLabel: new Date(`${m.movement_date}T00:00:00`).toLocaleDateString("es-CO", {
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        }),
-      })),
-    [filteredMovements, advisors],
-  );
-
   const summaries = useMemo(() => {
     const map = new Map<string, BudgetSummary>();
     for (const budget of budgets ?? []) {
@@ -174,84 +96,23 @@ export default function AdminFinanzasPage() {
     return map;
   }, [budgets, movements]);
 
-  // Period-scoped per-advisor ganado/gastado, used only by Analíticas charts.
-  const periodSummaries = useMemo(() => {
-    const map = new Map<string, { ganado: number; gastado: number }>();
-    for (const advisor of advisors ?? []) {
-      const advisorMovements = periodMovements.filter((m) => m.advisor_id === advisor.id);
-      const ganado = advisorMovements.filter((m) => m.type === "ingreso").reduce((s, m) => s + m.amount, 0);
-      const gastado = advisorMovements.filter((m) => m.type === "gasto").reduce((s, m) => s + m.amount, 0);
-      map.set(advisor.id, { ganado, gastado });
-    }
-    return map;
-  }, [advisors, periodMovements]);
-
-  const totals = useMemo(() => {
-    const presupuestoTotal = (budgets ?? []).reduce((sum, b) => sum + b.presupuesto_asignado, 0);
-    const ganado = (movements ?? []).filter((m) => m.type === "ingreso").reduce((s, m) => s + m.amount, 0);
-    const gastado = (movements ?? []).filter((m) => m.type === "gasto").reduce((s, m) => s + m.amount, 0);
-    const balance = ganado - gastado;
-    const disponible = presupuestoTotal + ganado - gastado;
-    return { presupuestoTotal, ganado, gastado, balance, disponible };
-  }, [budgets, movements]);
-
-  // Month-over-month trend for the Resumen KPI cards.
-  const trends = useMemo(() => {
-    const all = movements ?? [];
-    const now = new Date();
-    const thisMonthKey = now.toISOString().slice(0, 7);
-    const lastMonthKey = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 7);
-    const thisMonth = all.filter((m) => m.movement_date.startsWith(thisMonthKey));
-    const lastMonth = all.filter((m) => m.movement_date.startsWith(lastMonthKey));
-    const sumType = (list: BudgetMovement[], type: MovementType) =>
-      list.filter((m) => m.type === type).reduce((s, m) => s + m.amount, 0);
-
-    const ganadoThis = sumType(thisMonth, "ingreso");
-    const ganadoLast = sumType(lastMonth, "ingreso");
-    const gastadoThis = sumType(thisMonth, "gasto");
-    const gastadoLast = sumType(lastMonth, "gasto");
-    const balanceThis = ganadoThis - gastadoThis;
-    const balanceLast = ganadoLast - gastadoLast;
-
-    const presupuestoTotal = (budgets ?? []).reduce((s, b) => s + b.presupuesto_asignado, 0);
-    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
-    const disponibleAsOf = (cutoff: string) => {
-      const upTo = all.filter((m) => m.movement_date <= cutoff);
-      return presupuestoTotal + sumType(upTo, "ingreso") - sumType(upTo, "gasto");
-    };
-    const disponibleNow = disponibleAsOf(now.toISOString().slice(0, 10));
-    const disponibleLast = disponibleAsOf(lastMonthEnd);
-
-    return {
-      ganado: { percent: pctChange(ganadoThis, ganadoLast), direction: (ganadoThis >= ganadoLast ? "up" : "down") as "up" | "down" },
-      // Inverted on purpose: for "Total gastado", spending LESS than last
-      // month is the good outcome, so it shows green/up even though the
-      // raw number went down — matches how a real finance dashboard reads.
-      gastado: { percent: pctChange(gastadoThis, gastadoLast), direction: (gastadoThis <= gastadoLast ? "up" : "down") as "up" | "down" },
-      balance: { percent: pctChange(balanceThis, balanceLast), direction: (balanceThis >= balanceLast ? "up" : "down") as "up" | "down" },
-      disponible: { percent: pctChange(disponibleNow, disponibleLast), direction: (disponibleNow >= disponibleLast ? "up" : "down") as "up" | "down" },
-      movimientos: {
-        percent: pctChange(thisMonth.length, lastMonth.length),
-        direction: (thisMonth.length >= lastMonth.length ? "up" : "down") as "up" | "down",
-      },
-    };
-  }, [movements, budgets]);
-
-  const table = useDataTable({
-    data: searchableMovements,
-    searchableFields: ["concept", "observations", "_advisorName", "_typeLabel", "_dateLabel"],
-    initialSort: { field: "movement_date", direction: "desc" },
-  });
-
-  // "Integrantes con mayor ingreso" — ranked by Ganado within the selected
-  // period, distinct from the all-time totals shown on the member cards.
-  const incomeRanking = useMemo(
-    () =>
-      (advisors ?? [])
-        .map((a) => ({ label: a.name, count: periodSummaries.get(a.id)?.ganado ?? 0, color: a.color }))
-        .sort((a, b) => b.count - a.count),
-    [advisors, periodSummaries],
+  const selectedAdvisor = selectedAdvisorId ? (advisors ?? []).find((a) => a.id === selectedAdvisorId) ?? null : null;
+  const selectedBudget = selectedAdvisorId ? (budgets ?? []).find((b) => b.advisor_id === selectedAdvisorId) ?? null : null;
+  const selectedMovements = useMemo(
+    () => (selectedAdvisorId ? (movements ?? []).filter((m) => m.advisor_id === selectedAdvisorId) : []),
+    [movements, selectedAdvisorId],
   );
+
+  // The Drawer for both new and existing movements always belongs to
+  // whichever advisor is currently open — MovementDrawer never asks.
+  const movementAdvisor = editingMovement
+    ? (advisors ?? []).find((a) => a.id === editingMovement.advisor_id) ?? null
+    : null;
+
+  function openNewMovementFor(advisorId: string) {
+    setEditingMovement({ ...emptyMovement, advisor_id: advisorId });
+    setMovementError(null);
+  }
 
   async function handleSaveMember(edits: MemberEdits) {
     if (!editingAdvisor) return;
@@ -326,11 +187,6 @@ export default function AdminFinanzasPage() {
     }
   }
 
-  function openNewMovement() {
-    setEditingMovement({ ...emptyMovement, advisor_id: advisors?.[0]?.id });
-    setMovementError(null);
-  }
-
   async function handleSubmitMovement(e: React.FormEvent) {
     e.preventDefault();
     if (!editingMovement) return;
@@ -358,7 +214,7 @@ export default function AdminFinanzasPage() {
     setSavingMovement(false);
     if (res.ok) {
       // Optimistic update: merge the saved movement into local state
-      // immediately so KPIs/cards/charts/timeline/list all reflect it in
+      // immediately so the profile's KPIs/charts/history reflect it in
       // this same render, instead of waiting on a fresh Supabase round
       // trip. fetchAll() below still runs to reconcile with the server's
       // canonical row (real id/created_at/profiles for a brand-new insert).
@@ -425,271 +281,87 @@ export default function AdminFinanzasPage() {
     }
   }
 
-  const monthlyEvolution = useMemo(() => {
-    const map = new Map<string, { ingresos: number; gastos: number }>();
-    for (const m of periodMovements) {
-      const key = m.movement_date.slice(0, 7);
-      const entry = map.get(key) ?? { ingresos: 0, gastos: 0 };
-      if (m.type === "ingreso") entry.ingresos += m.amount;
-      else entry.gastos += m.amount;
-      map.set(key, entry);
-    }
-    return Array.from(map.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, v]) => ({
-        month: new Date(`${key}-01T00:00:00`).toLocaleDateString("es-CO", { month: "short", year: "2-digit" }),
-        ...v,
-      }));
-  }, [periodMovements]);
-
-  const cashFlowData = useMemo(
-    () => monthlyEvolution.map((m) => ({ label: m.month, balance: m.ingresos - m.gastos })),
-    [monthlyEvolution],
-  );
-
-  const editingBudget = editingAdvisor ? (budgets ?? []).find((b) => b.advisor_id === editingAdvisor.id) ?? null : null;
-  const editingSummary = editingAdvisor ? summaries.get(editingAdvisor.id) ?? null : null;
-  const hasAnyMovements = (movements?.length ?? 0) > 0;
-
   return (
     <div className="mx-auto max-w-6xl">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight text-admin-text">Finanzas</h1>
-          <p className="mt-1 text-sm font-medium text-admin-text-muted">
-            Presupuesto, ingresos y gastos del grupo, en tiempo real.
-          </p>
-        </div>
-        {!canEdit && (
-          <p className="rounded-admin-md bg-admin-bg px-3 py-2 text-xs font-medium text-admin-text-muted">
-            Solo el administrador financiero puede modificar esta información.
-          </p>
-        )}
-      </div>
-
-      {/* ============ 1. RESUMEN FINANCIERO ============ */}
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {loading ? (
-          Array.from({ length: 6 }).map((_, i) => <SkeletonStatCard key={i} />)
-        ) : (
-          <>
-            <KpiCard
-              label="Presupuesto total"
-              value={formatCOP(totals.presupuestoTotal)}
-              description="Suma asignada a los integrantes"
-              icon={<WalletIcon className="h-5 w-5" />}
-              accent="royal"
-            />
-            <KpiCard
-              label="Total ganado"
-              value={formatCOP(totals.ganado)}
-              description="Ingresos acumulados"
-              trend={trends.ganado}
-              icon={<TrendingUpIcon className="h-5 w-5" />}
-              accent="whatsapp"
-            />
-            <KpiCard
-              label="Total gastado"
-              value={formatCOP(totals.gastado)}
-              description="Egresos acumulados"
-              trend={trends.gastado}
-              icon={<TrendingDownIcon className="h-5 w-5" />}
-              accent="gold"
-            />
-            <KpiCard
-              label="Balance general"
-              value={formatCOP(totals.balance)}
-              description="Ganado menos gastado"
-              trend={trends.balance}
-              icon={<WalletIcon className="h-5 w-5" />}
-              accent="neutral"
-            />
-            <KpiCard
-              label="Dinero disponible"
-              value={formatCOP(totals.disponible)}
-              description="Presupuesto más balance"
-              trend={trends.disponible}
-              icon={<WalletIcon className="h-5 w-5" />}
-              accent="royal"
-            />
-            <KpiCard
-              label="Movimientos registrados"
-              value={movements?.length ?? 0}
-              description="Ingresos y gastos en total"
-              trend={trends.movimientos}
-              icon={<ChartBarIcon className="h-5 w-5" />}
-              accent="gold"
-            />
-          </>
-        )}
-      </div>
-
-      {/* ============ 2. ANALÍTICAS ============ */}
-      <motion.div {...fadeInUp()} className="mt-12 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-lg font-bold tracking-tight text-admin-text">Analíticas</h2>
-        <PeriodFilter
-          period={period}
-          onPeriodChange={setPeriod}
-          customFrom={customFrom}
-          customTo={customTo}
-          onCustomFromChange={setCustomFrom}
-          onCustomToChange={setCustomTo}
-        />
-      </motion.div>
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <motion.div {...fadeInUp(0.05)} className="rounded-admin-xl border border-admin-border bg-admin-surface p-5 shadow-admin-xs">
-          <h3 className="font-display text-base font-bold tracking-tight text-admin-text">Distribución del presupuesto</h3>
-          <p className="text-xs font-medium text-admin-text-muted">Participación de cada integrante en el presupuesto total.</p>
-          {loading ? (
-            <Skeleton className="mt-4 h-[240px] w-full" />
-          ) : (
-            <BudgetDonutChart
-              data={(budgets ?? []).map((b) => ({
-                label: advisors?.find((a) => a.id === b.advisor_id)?.name ?? "—",
-                value: b.presupuesto_asignado,
-                color: advisors?.find((a) => a.id === b.advisor_id)?.color ?? "#0f3fb0",
-              }))}
-            />
-          )}
-        </motion.div>
-        <motion.div {...fadeInUp(0.1)} className="rounded-admin-xl border border-admin-border bg-admin-surface p-5 shadow-admin-xs">
-          <h3 className="font-display text-base font-bold tracking-tight text-admin-text">Ingresos vs. gastos por integrante</h3>
-          <p className="text-xs font-medium text-admin-text-muted">Comparación directa en el período seleccionado.</p>
-          {loading ? (
-            <Skeleton className="mt-4 h-[240px] w-full" />
-          ) : (
-            <IncomeVsExpenseChart
-              data={(advisors ?? []).map((a) => {
-                const s = periodSummaries.get(a.id);
-                return { label: a.name, ingresos: s?.ganado ?? 0, gastos: s?.gastado ?? 0 };
-              })}
-            />
-          )}
-        </motion.div>
-      </div>
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <motion.div {...fadeInUp(0.05)} className="rounded-admin-xl border border-admin-border bg-admin-surface p-5 shadow-admin-xs">
-          <h3 className="font-display text-base font-bold tracking-tight text-admin-text">Evolución mensual</h3>
-          <p className="text-xs font-medium text-admin-text-muted">Ingresos y gastos mes a mes.</p>
-          {loading ? <Skeleton className="mt-4 h-[240px] w-full" /> : <FinanceLineChart data={monthlyEvolution} />}
-        </motion.div>
-        <motion.div {...fadeInUp(0.1)} className="rounded-admin-xl border border-admin-border bg-admin-surface p-5 shadow-admin-xs">
-          <h3 className="font-display text-base font-bold tracking-tight text-admin-text">Flujo financiero</h3>
-          <p className="text-xs font-medium text-admin-text-muted">Flujo neto (ingresos − gastos) mes a mes.</p>
-          {loading ? <Skeleton className="mt-4 h-[240px] w-full" /> : <CashFlowAreaChart data={cashFlowData} />}
-        </motion.div>
-      </div>
-
-      <div className="mt-4 grid gap-4">
-        <motion.div {...fadeInUp(0.05)} className="rounded-admin-xl border border-admin-border bg-admin-surface p-5 shadow-admin-xs">
-          <h3 className="font-display text-base font-bold tracking-tight text-admin-text">Integrantes con mayor ingreso</h3>
-          <p className="text-xs font-medium text-admin-text-muted">Ganado por integrante en el período seleccionado.</p>
-          {loading ? (
-            <Skeleton className="mt-4 h-[220px] w-full" />
-          ) : (
-            <TopBarChart data={incomeRanking} emptyMessage="Aún no hay ingresos en este período." valueFormatter={formatCOP} />
-          )}
-        </motion.div>
-      </div>
-
-      {/* ============ 3. INTEGRANTES ============ */}
-      <motion.h2 {...fadeInUp()} className="mt-12 font-display text-lg font-bold tracking-tight text-admin-text">
-        Integrantes
-      </motion.h2>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {loading
-          ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-64 w-full rounded-admin-xl" />)
-          : advisors?.map((advisor) => {
-              const budget = budgets?.find((b) => b.advisor_id === advisor.id);
-              if (!budget) return null;
-              const summary = summaries.get(advisor.id) ?? { ganado: 0, gastado: 0, balance: 0, disponible: budget.presupuesto_asignado };
-              return (
-                <MemberCard
-                  key={advisor.id}
-                  advisor={advisor}
-                  budget={budget}
-                  summary={summary}
-                  canEdit={canEdit}
-                  onEdit={() => setEditingAdvisor(advisor)}
-                />
-              );
-            })}
-      </div>
-
-      {/* ============ 4. MOVIMIENTOS ============ */}
-      <div className="mt-12 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="font-display text-lg font-bold tracking-tight text-admin-text">Movimientos</h2>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" size="sm" icon={<DownloadIcon className="h-4 w-4" />} onClick={() => exportMovementsToExcel(filteredMovements, advisors ?? [])}>
-            Excel
-          </Button>
-          <Button variant="secondary" size="sm" icon={<DownloadIcon className="h-4 w-4" />} onClick={() => exportMovementsToPdf(filteredMovements, advisors ?? [])}>
-            PDF
-          </Button>
-          {canEdit && (
-            <>
-              <Button variant="secondary" size="sm" icon={<UploadIcon className="h-4 w-4" />} onClick={() => setImportOpen(true)}>
-                Importar Excel
-              </Button>
-              <Button variant="primary" size="sm" icon={<PlusIcon className="h-4 w-4" />} onClick={openNewMovement}>
-                Nuevo movimiento
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {!loading && !hasAnyMovements ? (
-        <div className="mt-4">
-          <EmptyState
-            title="Aún no existen movimientos financieros."
-            description="Registra el primer ingreso o gasto para empezar a ver el historial, las gráficas y los KPIs con datos reales."
-            actionLabel={canEdit ? "Registrar primer movimiento" : undefined}
-            onAction={canEdit ? openNewMovement : undefined}
-          />
-        </div>
-      ) : (
-        <>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Select value={advisorFilter} onChange={(e) => setAdvisorFilter(e.target.value)} className="w-48">
-              <option value="">Todos los integrantes</option>
-              {advisors?.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          <div className="mt-4">
-            {loading ? (
-              <Skeleton className="h-64 w-full rounded-admin-xl" />
-            ) : (
-              <RecentActivityTimeline movements={filteredMovements} advisors={advisors ?? []} />
-            )}
-          </div>
-
-          <div className="mt-4">
-            <TransactionList
-              table={table}
-              advisors={advisors ?? []}
-              loading={loading}
+      <AnimatePresence mode="wait">
+        {selectedAdvisor && selectedBudget ? (
+          <motion.div
+            key="profile"
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -12 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <MemberProfile
+              advisor={selectedAdvisor}
+              budget={selectedBudget}
+              summary={summaries.get(selectedAdvisor.id) ?? { ganado: 0, gastado: 0, balance: 0, disponible: selectedBudget.presupuesto_asignado }}
+              movements={selectedMovements}
               canEdit={canEdit}
-              onEdit={(m) => {
+              onBack={() => setSelectedAdvisorId(null)}
+              onEditBudget={() => setEditingAdvisor(selectedAdvisor)}
+              onRegisterMovement={() => openNewMovementFor(selectedAdvisor.id)}
+              onEditMovement={(m) => {
                 setEditingMovement(m);
                 setMovementError(null);
               }}
-              onDelete={(m) => setPendingDeleteMovement(m)}
+              onDeleteMovement={(m) => setPendingDeleteMovement(m)}
             />
-          </div>
-        </>
-      )}
+          </motion.div>
+        ) : (
+          <motion.div
+            key="selector"
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 12 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h1 className="font-display text-2xl font-extrabold tracking-tight text-admin-text">Finanzas</h1>
+                <p className="mt-1 text-sm font-medium text-admin-text-muted">
+                  Selecciona un integrante para ver su perfil financiero.
+                </p>
+              </div>
+              {canEdit ? (
+                <Button variant="secondary" size="sm" icon={<UploadIcon className="h-4 w-4" />} onClick={() => setImportOpen(true)}>
+                  Importar Excel
+                </Button>
+              ) : (
+                <p className="rounded-admin-md bg-admin-bg px-3 py-2 text-xs font-medium text-admin-text-muted">
+                  Solo el administrador financiero puede modificar esta información.
+                </p>
+              )}
+            </div>
+
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {loading
+                ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-72 w-full rounded-admin-xl" />)
+                : advisors?.map((advisor) => {
+                    const budget = budgets?.find((b) => b.advisor_id === advisor.id);
+                    if (!budget) return null;
+                    const summary = summaries.get(advisor.id) ?? { ganado: 0, gastado: 0, balance: 0, disponible: budget.presupuesto_asignado };
+                    return (
+                      <MemberCard
+                        key={advisor.id}
+                        advisor={advisor}
+                        budget={budget}
+                        summary={summary}
+                        canEdit={canEdit}
+                        onSelect={() => setSelectedAdvisorId(advisor.id)}
+                        onEdit={() => setEditingAdvisor(advisor)}
+                      />
+                    );
+                  })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <EditMemberDrawer
         advisor={editingAdvisor}
-        budget={editingBudget}
-        summary={editingSummary}
+        budget={editingAdvisor ? (budgets ?? []).find((b) => b.advisor_id === editingAdvisor.id) ?? null : null}
+        summary={editingAdvisor ? summaries.get(editingAdvisor.id) ?? null : null}
         saving={savingMember}
         onClose={() => setEditingAdvisor(null)}
         onSave={handleSaveMember}
@@ -697,7 +369,7 @@ export default function AdminFinanzasPage() {
 
       <MovementDrawer
         movement={editingMovement}
-        advisors={advisors ?? []}
+        advisor={movementAdvisor}
         saving={savingMovement}
         error={movementError}
         onClose={() => setEditingMovement(null)}
