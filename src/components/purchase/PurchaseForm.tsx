@@ -65,22 +65,6 @@ export default function PurchaseForm({
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className={labelClasses}>Número de documento</span>
-          <input
-            type="text"
-            placeholder="Ej. 1020304050"
-            value={values.documentNumber}
-            onChange={handleText("documentNumber")}
-            onBlur={() => onBlur("documentNumber")}
-            aria-invalid={Boolean(fieldError("documentNumber"))}
-            className={inputClasses("documentNumber")}
-          />
-          {fieldError("documentNumber") && (
-            <span className={errorClasses}>{fieldError("documentNumber")}</span>
-          )}
-        </label>
-
-        <label className="flex flex-col gap-1.5">
           <span className={labelClasses}>WhatsApp</span>
           <input
             type="tel"
@@ -116,7 +100,7 @@ export default function PurchaseForm({
           </span>
         </label>
 
-        <label className="flex flex-col gap-1.5">
+        <label className="flex flex-col gap-1.5 sm:col-span-2">
           <span className={labelClasses}>Confirmar correo electrónico</span>
           <input
             type="email"

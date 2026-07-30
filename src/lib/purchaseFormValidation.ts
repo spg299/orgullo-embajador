@@ -1,6 +1,5 @@
 export interface BuyerFormValues {
   fullName: string;
-  documentNumber: string;
   whatsapp: string;
   email: string;
   confirmEmail: string;
@@ -9,7 +8,6 @@ export interface BuyerFormValues {
 
 export const initialBuyerFormValues: BuyerFormValues = {
   fullName: "",
-  documentNumber: "",
   whatsapp: "",
   email: "",
   confirmEmail: "",
@@ -25,10 +23,6 @@ export function validateBuyerForm(values: BuyerFormValues): BuyerFormErrors {
 
   if (!values.fullName.trim()) {
     errors.fullName = "Ingresa tu nombre completo.";
-  }
-
-  if (!values.documentNumber.trim()) {
-    errors.documentNumber = "Ingresa tu número de documento.";
   }
 
   const whatsappDigits = values.whatsapp.replace(/\D/g, "");

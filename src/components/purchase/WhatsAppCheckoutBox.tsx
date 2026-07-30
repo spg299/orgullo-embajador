@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Button from "@/components/ui/Button";
 import { CheckIcon, WhatsAppIcon } from "@/components/ui/Icons";
 import { formatCOP } from "@/lib/format";
@@ -15,9 +15,15 @@ const checklist = [
   "Una vez confirmado el pago recibirás tus boletas",
 ];
 
+const REDIRECT_SECONDS = 3;
+
 interface Selection {
   tier: Tier;
   quantity: number;
+}
+
+interface PendingRedirect {
+  url: string;
 }
 
 export default function WhatsAppCheckoutBox({
@@ -42,10 +48,46 @@ export default function WhatsAppCheckoutBox({
   onFinalize: () => void;
 }) {
   const [whatsappNumber, setWhatsappNumber] = useState(defaultSiteSettings.whatsapp_number);
+  const [pendingRedirect, setPendingRedirect] = useState<PendingRedirect | null>(null);
+  const [countdown, setCountdown] = useState(REDIRECT_SECONDS);
+  const onFinalizeRef = useRef(onFinalize);
+  useEffect(() => {
+    onFinalizeRef.current = onFinalize;
+  }, [onFinalize]);
+  // A blank tab opened synchronously inside the click handler, before the
+  // countdown starts. Browsers only allow window.open to bypass the popup
+  // blocker when called directly from a user gesture — reusing this
+  // reference to set .location.href once the countdown ends keeps the
+  // delayed redirect from being blocked. Null if the browser refused even
+  // the synchronous open; the fallback below covers that case. A ref (not
+  // state) because it's an external handle, not render-derived data.
+  const redirectWinRef = useRef<Window | null>(null);
 
   useEffect(() => {
     fetchSiteSettings().then((settings) => setWhatsappNumber(settings.whatsapp_number));
   }, []);
+
+  useEffect(() => {
+    if (!pendingRedirect) return;
+
+    const timer = setTimeout(() => {
+      if (countdown <= 1) {
+        const win = redirectWinRef.current;
+        if (win) {
+          win.location.href = pendingRedirect.url;
+        } else {
+          window.open(pendingRedirect.url, "_blank", "noopener,noreferrer");
+        }
+        redirectWinRef.current = null;
+        setPendingRedirect(null);
+        onFinalizeRef.current();
+      } else {
+        setCountdown((c) => c - 1);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [pendingRedirect, countdown]);
 
   function handleFinalize() {
     if (disabled) return;
@@ -64,7 +106,6 @@ export default function WhatsAppCheckoutBox({
       `Total: ${formatCOP(total)}`,
       "",
       `Nombre: ${buyer.fullName}`,
-      `Documento: ${buyer.documentNumber}`,
       `WhatsApp: ${buyer.whatsapp}`,
       `Correo: ${buyer.email}`,
     ];
@@ -72,10 +113,9 @@ export default function WhatsAppCheckoutBox({
     const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(lines.join("\n"))}`;
 
     // Fire-and-forget: record the sale in the background without ever
-    // blocking or delaying the WhatsApp redirect below, which remains the
-    // actual critical path. Awaiting here would also risk the popup
-    // blocker catching window.open once it's no longer in the same
-    // synchronous click-handler call stack.
+    // blocking or delaying the WhatsApp redirect. Awaiting here would risk
+    // the popup blocker catching window.open once it's no longer in the
+    // same synchronous click-handler call stack.
     fetch("/api/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -94,8 +134,12 @@ export default function WhatsAppCheckoutBox({
       }),
     }).catch(() => {});
 
-    window.open(url, "_blank", "noopener,noreferrer");
-    onFinalize();
+    // Open the tab now (still inside the click gesture, so it isn't
+    // blocked) but leave it blank — the modal below shows for
+    // REDIRECT_SECONDS, then the effect above points this tab at `url`.
+    redirectWinRef.current = window.open("", "_blank");
+    setCountdown(REDIRECT_SECONDS);
+    setPendingRedirect({ url });
   }
 
   if (submitted) {
@@ -145,7 +189,7 @@ export default function WhatsAppCheckoutBox({
         variant="whatsapp"
         size="lg"
         icon={<WhatsAppIcon className="h-5 w-5" />}
-        disabled={disabled}
+        disabled={disabled || Boolean(pendingRedirect)}
         onClick={handleFinalize}
         className="mt-6 w-full"
       >
@@ -156,6 +200,37 @@ export default function WhatsAppCheckoutBox({
         <p className="mt-3 text-center text-xs font-medium text-navy-700/50">
           {disabledReason}
         </p>
+      )}
+
+      {pendingRedirect && (
+        <div
+          role="alertdialog"
+          aria-live="assertive"
+          aria-label="Importante"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-navy-950/60 p-4 backdrop-blur-sm"
+        >
+          <div className="w-full max-w-sm rounded-3xl border border-navy-900/8 bg-white p-6 text-center shadow-soft sm:p-8">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gold-100 text-2xl">
+              <span aria-hidden="true">⚠️</span>
+            </div>
+            <h3 className="mt-4 font-display text-lg font-bold tracking-tight text-navy-950">
+              Importante
+            </h3>
+            <p className="mt-2 text-sm font-medium leading-relaxed text-navy-700/70">
+              El correo electrónico que ingresaste debe ser el mismo con el
+              que estás registrado en Quentro, ya que allí recibirás tus
+              boletas.
+            </p>
+
+            <div className="mx-auto mt-5 flex h-14 w-14 items-center justify-center rounded-full border-2 border-royal-200 bg-royal-50 font-display text-2xl font-bold text-royal-500">
+              {countdown}
+            </div>
+            <p className="mt-3 text-sm font-semibold text-navy-900/70">
+              Serás redirigido a WhatsApp en {countdown}{" "}
+              {countdown === 1 ? "segundo" : "segundos"}…
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );

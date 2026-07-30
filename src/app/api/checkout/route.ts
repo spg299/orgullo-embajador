@@ -20,7 +20,6 @@ export async function POST(request: NextRequest) {
       matchLabel: string;
       buyer: {
         fullName: string;
-        documentNumber: string;
         whatsapp: string;
         email: string;
       };
@@ -42,7 +41,6 @@ export async function POST(request: NextRequest) {
         match_id: matchId,
         match_label: matchLabel,
         buyer_full_name: buyer.fullName,
-        buyer_document_number: buyer.documentNumber,
         buyer_whatsapp: buyer.whatsapp,
         buyer_email: buyer.email,
         subtotal,

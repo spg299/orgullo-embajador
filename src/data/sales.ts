@@ -43,7 +43,7 @@ export interface Sale {
   match_id: string | null;
   match_label: string;
   buyer_full_name: string;
-  buyer_document_number: string;
+  buyer_document_number: string | null;
   buyer_whatsapp: string;
   buyer_email: string;
   status: SaleStatus;
