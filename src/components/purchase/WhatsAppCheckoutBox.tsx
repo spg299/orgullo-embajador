@@ -54,31 +54,25 @@ export default function WhatsAppCheckoutBox({
   useEffect(() => {
     onFinalizeRef.current = onFinalize;
   }, [onFinalize]);
-  // A blank tab opened synchronously inside the click handler, before the
-  // countdown starts. Browsers only allow window.open to bypass the popup
-  // blocker when called directly from a user gesture — reusing this
-  // reference to set .location.href once the countdown ends keeps the
-  // delayed redirect from being blocked. Null if the browser refused even
-  // the synchronous open; the fallback below covers that case. A ref (not
-  // state) because it's an external handle, not render-derived data.
-  const redirectWinRef = useRef<Window | null>(null);
 
   useEffect(() => {
     fetchSiteSettings().then((settings) => setWhatsappNumber(settings.whatsapp_number));
   }, []);
 
+  // The only place WhatsApp actually opens. Nothing before this — not in
+  // handleFinalize, not anywhere else — may call window.open/location on
+  // the wa.me URL, or the modal below would show for less than the full
+  // 3 seconds (or not be seen at all, if an earlier call shifts focus to
+  // a new tab). This can be blocked by the browser's popup blocker, since
+  // it fires from a setTimeout rather than directly inside the click
+  // handler — an accepted tradeoff for the redirect only happening once
+  // the countdown has actually finished, as requested.
   useEffect(() => {
     if (!pendingRedirect) return;
 
     const timer = setTimeout(() => {
       if (countdown <= 1) {
-        const win = redirectWinRef.current;
-        if (win) {
-          win.location.href = pendingRedirect.url;
-        } else {
-          window.open(pendingRedirect.url, "_blank", "noopener,noreferrer");
-        }
-        redirectWinRef.current = null;
+        window.open(pendingRedirect.url, "_blank", "noopener,noreferrer");
         setPendingRedirect(null);
         onFinalizeRef.current();
       } else {
@@ -112,10 +106,8 @@ export default function WhatsAppCheckoutBox({
 
     const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(lines.join("\n"))}`;
 
-    // Fire-and-forget: record the sale in the background without ever
-    // blocking or delaying the WhatsApp redirect. Awaiting here would risk
-    // the popup blocker catching window.open once it's no longer in the
-    // same synchronous click-handler call stack.
+    // Fire-and-forget: record the sale in the background without blocking
+    // or delaying the countdown modal below.
     fetch("/api/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -134,10 +126,6 @@ export default function WhatsAppCheckoutBox({
       }),
     }).catch(() => {});
 
-    // Open the tab now (still inside the click gesture, so it isn't
-    // blocked) but leave it blank — the modal below shows for
-    // REDIRECT_SECONDS, then the effect above points this tab at `url`.
-    redirectWinRef.current = window.open("", "_blank");
     setCountdown(REDIRECT_SECONDS);
     setPendingRedirect({ url });
   }
