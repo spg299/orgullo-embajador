@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase/client";
 import { supabaseAuthErrorMessage } from "@/lib/supabase/authErrors";
 import { SITE_URL } from "@/lib/email/config";
 import Button from "@/components/ui/Button";
-import { CloseIcon } from "@/components/ui/Icons";
+import { CloseIcon, EyeIcon, EyeOffIcon } from "@/components/ui/Icons";
 
 type View = "login" | "register" | "forgot";
 
@@ -13,6 +13,48 @@ const inputClasses =
   "w-full rounded-xl border border-navy-900/12 bg-white px-4 py-3 text-sm text-navy-950 placeholder:text-navy-900/30 focus:border-royal-400 focus:outline-none focus:ring-2 focus:ring-royal-100";
 
 const labelClasses = "text-sm font-medium text-navy-900/80";
+
+function PasswordField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  minLength,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  minLength?: number;
+}) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className={labelClasses}>{label}</span>
+      <div className="relative">
+        <input
+          type={visible ? "text" : "password"}
+          required
+          minLength={minLength}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={`${inputClasses} pr-11`}
+          placeholder={placeholder}
+        />
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
+          aria-pressed={visible}
+          className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-navy-900/40 transition-colors hover:bg-navy-900/5 hover:text-navy-900/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-royal-300"
+        >
+          {visible ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+        </button>
+      </div>
+    </label>
+  );
+}
 
 export default function AuthModal({
   initialView = "login",
@@ -132,17 +174,12 @@ export default function AuthModal({
                   placeholder="tucorreo@ejemplo.com"
                 />
               </label>
-              <label className="flex flex-col gap-1.5">
-                <span className={labelClasses}>Contraseña</span>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={inputClasses}
-                  placeholder="••••••••"
-                />
-              </label>
+              <PasswordField
+                label="Contraseña"
+                value={password}
+                onChange={setPassword}
+                placeholder="••••••••"
+              />
 
               {error && <p className="text-sm text-rose-600">{error}</p>}
 
@@ -208,18 +245,13 @@ export default function AuthModal({
                     placeholder="tucorreo@ejemplo.com"
                   />
                 </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className={labelClasses}>Contraseña</span>
-                  <input
-                    type="password"
-                    required
-                    minLength={6}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className={inputClasses}
-                    placeholder="Mínimo 6 caracteres"
-                  />
-                </label>
+                <PasswordField
+                  label="Contraseña"
+                  value={password}
+                  onChange={setPassword}
+                  placeholder="Mínimo 6 caracteres"
+                  minLength={6}
+                />
 
                 {error && <p className="text-sm text-rose-600">{error}</p>}
 
