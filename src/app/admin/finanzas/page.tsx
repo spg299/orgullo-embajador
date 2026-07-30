@@ -1,30 +1,27 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/admin/Toast";
 import { ConfirmDialog } from "@/components/ui/admin/ConfirmDialog";
+import { Popover } from "@/components/ui/admin/Popover";
 import { Skeleton } from "@/components/ui/admin/Skeleton";
+import { useDataTable } from "@/components/ui/admin/useDataTable";
 import Button from "@/components/ui/Button";
-import { UploadIcon } from "@/components/ui/Icons";
+import { UploadIcon, PencilIcon, PlusIcon } from "@/components/ui/Icons";
 import { ImportExcelDialog } from "@/components/admin/finance/ImportExcelDialog";
-import { MemberCard } from "@/components/admin/finance/MemberCard";
-import { MemberProfile } from "@/components/admin/finance/MemberProfile";
-import { EditMemberDrawer, type MemberEdits } from "@/components/admin/finance/EditMemberDrawer";
-import { MovementDrawer } from "@/components/admin/finance/MovementDrawer";
+import { MemberRail } from "@/components/admin/finance/MemberRail";
+import { StatStrip } from "@/components/admin/finance/StatStrip";
+import { FlowSparkline } from "@/components/admin/finance/FlowSparkline";
+import { TransactionList } from "@/components/admin/finance/TransactionList";
+import { MovementPopoverForm, type MovementFormValues } from "@/components/admin/finance/MovementPopoverForm";
+import { BudgetPopoverForm, type MemberEdits } from "@/components/admin/finance/BudgetPopoverForm";
 import { isFinanceAdmin } from "@/lib/financeAccess";
-import { summarizeBudget, type Budget, type BudgetMovement, type BudgetSummary, type MovementType } from "@/data/finance";
+import { summarizeBudget, type Budget, type BudgetMovement, type BudgetSummary } from "@/data/finance";
 import type { Advisor } from "@/data/advisors";
-
-const emptyMovement: Partial<BudgetMovement> = {
-  type: "gasto",
-  concept: "",
-  amount: 0,
-  movement_date: new Date().toISOString().slice(0, 10),
-  observations: "",
-};
+import { formatCOP } from "@/lib/format";
+import { exportMovementsToExcel, exportMovementsToPdf } from "@/lib/finance/exports";
 
 async function getAccessToken() {
   const { data } = await supabase.auth.getSession();
@@ -42,10 +39,11 @@ export default function AdminFinanzasPage() {
 
   const [selectedAdvisorId, setSelectedAdvisorId] = useState<string | null>(null);
 
-  const [editingAdvisor, setEditingAdvisor] = useState<Advisor | null>(null);
+  const [budgetPopoverOpen, setBudgetPopoverOpen] = useState(false);
   const [savingMember, setSavingMember] = useState(false);
 
-  const [editingMovement, setEditingMovement] = useState<Partial<BudgetMovement> | null>(null);
+  const [movementPopoverOpen, setMovementPopoverOpen] = useState(false);
+  const [editingMovement, setEditingMovement] = useState<BudgetMovement | null>(null);
   const [savingMovement, setSavingMovement] = useState(false);
   const [movementError, setMovementError] = useState<string | null>(null);
   const [pendingDeleteMovement, setPendingDeleteMovement] = useState<BudgetMovement | null>(null);
@@ -96,28 +94,82 @@ export default function AdminFinanzasPage() {
     return map;
   }, [budgets, movements]);
 
+  const disponibleTotal = useMemo(
+    () => Array.from(summaries.values()).reduce((sum, s) => sum + s.disponible, 0),
+    [summaries],
+  );
+
   const selectedAdvisor = selectedAdvisorId ? (advisors ?? []).find((a) => a.id === selectedAdvisorId) ?? null : null;
   const selectedBudget = selectedAdvisorId ? (budgets ?? []).find((b) => b.advisor_id === selectedAdvisorId) ?? null : null;
-  const selectedMovements = useMemo(
-    () => (selectedAdvisorId ? (movements ?? []).filter((m) => m.advisor_id === selectedAdvisorId) : []),
+  const selectedSummary = selectedAdvisorId ? summaries.get(selectedAdvisorId) ?? null : null;
+
+  const scopeMovements = useMemo(
+    () => (selectedAdvisorId ? (movements ?? []).filter((m) => m.advisor_id === selectedAdvisorId) : movements ?? []),
     [movements, selectedAdvisorId],
   );
 
-  // The Drawer for both new and existing movements always belongs to
-  // whichever advisor is currently open — MovementDrawer never asks.
-  const movementAdvisor = editingMovement
-    ? (advisors ?? []).find((a) => a.id === editingMovement.advisor_id) ?? null
-    : null;
+  const totals = useMemo(() => {
+    const presupuestoTotal = (budgets ?? []).reduce((sum, b) => sum + b.presupuesto_asignado, 0);
+    const ganado = (movements ?? []).filter((m) => m.type === "ingreso").reduce((s, m) => s + m.amount, 0);
+    const gastado = (movements ?? []).filter((m) => m.type === "gasto").reduce((s, m) => s + m.amount, 0);
+    const balance = ganado - gastado;
+    return { presupuestoTotal, ganado, gastado, balance, disponible: presupuestoTotal + balance };
+  }, [budgets, movements]);
 
-  function openNewMovementFor(advisorId: string) {
-    setEditingMovement({ ...emptyMovement, advisor_id: advisorId });
-    setMovementError(null);
-  }
+  const stats = selectedAdvisor && selectedBudget && selectedSummary
+    ? [
+        { label: "Presupuesto", value: formatCOP(selectedBudget.presupuesto_asignado) },
+        { label: "Ganado", value: formatCOP(selectedSummary.ganado), tone: "credit" as const },
+        { label: "Gastado", value: formatCOP(selectedSummary.gastado), tone: "debit" as const },
+        { label: "Balance", value: formatCOP(selectedSummary.balance) },
+        { label: "Disponible", value: formatCOP(selectedSummary.disponible) },
+      ]
+    : [
+        { label: "Presupuesto total", value: formatCOP(totals.presupuestoTotal) },
+        { label: "Ganado", value: formatCOP(totals.ganado), tone: "credit" as const },
+        { label: "Gastado", value: formatCOP(totals.gastado), tone: "debit" as const },
+        { label: "Balance", value: formatCOP(totals.balance) },
+        { label: "Disponible", value: formatCOP(totals.disponible) },
+      ];
+
+  const monthlyFlow = useMemo(() => {
+    const map = new Map<string, { ingresos: number; gastos: number }>();
+    for (const m of scopeMovements) {
+      const key = m.movement_date.slice(0, 7);
+      const entry = map.get(key) ?? { ingresos: 0, gastos: 0 };
+      if (m.type === "ingreso") entry.ingresos += m.amount;
+      else entry.gastos += m.amount;
+      map.set(key, entry);
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-6)
+      .map(([key, v]) => ({
+        month: new Date(`${key}-01T00:00:00`).toLocaleDateString("es-CO", { month: "short", year: "2-digit" }),
+        ...v,
+      }));
+  }, [scopeMovements]);
+
+  const searchableMovements = useMemo(
+    () =>
+      scopeMovements.map((m) => ({
+        ...m,
+        _advisorName: advisors?.find((a) => a.id === m.advisor_id)?.name ?? "",
+        _typeLabel: m.type === "ingreso" ? "Ingreso" : "Gasto",
+        _dateLabel: new Date(`${m.movement_date}T00:00:00`).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" }),
+      })),
+    [scopeMovements, advisors],
+  );
+
+  const table = useDataTable({
+    data: searchableMovements,
+    searchableFields: ["concept", "observations", "_advisorName", "_typeLabel", "_dateLabel"],
+    initialSort: { field: "movement_date", direction: "desc" },
+  });
 
   async function handleSaveMember(edits: MemberEdits) {
-    if (!editingAdvisor) return;
-    const advisorId = editingAdvisor.id;
-    const summary = summaries.get(advisorId) ?? { ganado: 0, gastado: 0, balance: 0, disponible: 0 };
+    if (!selectedAdvisor || !selectedSummary) return;
+    const advisorId = selectedAdvisor.id;
     setSavingMember(true);
     const accessToken = await getAccessToken();
 
@@ -125,16 +177,11 @@ export default function AdminFinanzasPage() {
       fetch("/api/finance/budgets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accessToken,
-          advisorId,
-          presupuestoAsignado: edits.presupuesto,
-          observaciones: edits.observaciones,
-        }),
+        body: JSON.stringify({ accessToken, advisorId, presupuestoAsignado: edits.presupuesto, observaciones: edits.observaciones }),
       }),
     ];
 
-    const deltaGanado = edits.ganado - summary.ganado;
+    const deltaGanado = edits.ganado - selectedSummary.ganado;
     if (deltaGanado !== 0) {
       requests.push(
         fetch("/api/finance/movements", {
@@ -155,7 +202,7 @@ export default function AdminFinanzasPage() {
       );
     }
 
-    const deltaGastado = edits.gastado - summary.gastado;
+    const deltaGastado = edits.gastado - selectedSummary.gastado;
     if (deltaGastado !== 0) {
       requests.push(
         fetch("/api/finance/movements", {
@@ -179,7 +226,7 @@ export default function AdminFinanzasPage() {
     const results = await Promise.all(requests);
     setSavingMember(false);
     if (results.every((r) => r.ok)) {
-      setEditingAdvisor(null);
+      setBudgetPopoverOpen(false);
       fetchAll();
       toast.success("Integrante actualizado correctamente.");
     } else {
@@ -187,50 +234,30 @@ export default function AdminFinanzasPage() {
     }
   }
 
-  async function handleSubmitMovement(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editingMovement) return;
+  async function handleSubmitMovement(values: MovementFormValues) {
     setSavingMovement(true);
     setMovementError(null);
     const accessToken = await getAccessToken();
 
-    const payload = {
-      id: editingMovement.id,
-      advisor_id: editingMovement.advisor_id!,
-      type: editingMovement.type as MovementType,
-      concept: editingMovement.concept!,
-      amount: Number(editingMovement.amount),
-      movement_date: editingMovement.movement_date!,
-      observations: editingMovement.observations || null,
-      created_by: editingMovement.created_by ?? null,
-    };
-
     const res = await fetch("/api/finance/movements", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, movement: payload }),
+      body: JSON.stringify({ accessToken, movement: values }),
     });
 
     setSavingMovement(false);
     if (res.ok) {
-      // Optimistic update: merge the saved movement into local state
-      // immediately so the profile's KPIs/charts/history reflect it in
-      // this same render, instead of waiting on a fresh Supabase round
-      // trip. fetchAll() below still runs to reconcile with the server's
-      // canonical row (real id/created_at/profiles for a brand-new insert).
+      // Optimistic update so the stat strip/sparkline/table reflect the
+      // change immediately, instead of waiting on the follow-up refetch.
       setMovements((prev) => {
         if (!prev) return prev;
-        if (payload.id) {
-          return prev.map((m) => (m.id === payload.id ? { ...m, ...payload, id: m.id } : m));
+        if (values.id) {
+          return prev.map((m) => (m.id === values.id ? { ...m, ...values, id: m.id } : m));
         }
-        const optimistic: BudgetMovement = {
-          ...payload,
-          id: `optimistic-${Date.now()}`,
-          created_at: new Date().toISOString(),
-          profiles: null,
-        };
+        const optimistic: BudgetMovement = { ...values, id: `optimistic-${Date.now()}`, created_at: new Date().toISOString(), profiles: null };
         return [optimistic, ...prev];
       });
+      setMovementPopoverOpen(false);
       setEditingMovement(null);
       fetchAll();
       toast.success("Movimiento guardado correctamente.");
@@ -281,101 +308,155 @@ export default function AdminFinanzasPage() {
     }
   }
 
+  const exportAdvisors = selectedAdvisor ? [selectedAdvisor] : advisors ?? [];
+
   return (
     <div className="mx-auto max-w-6xl">
-      <AnimatePresence mode="wait">
-        {selectedAdvisor && selectedBudget ? (
-          <motion.div
-            key="profile"
-            initial={{ opacity: 0, x: 12 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -12 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <MemberProfile
-              advisor={selectedAdvisor}
-              budget={selectedBudget}
-              summary={summaries.get(selectedAdvisor.id) ?? { ganado: 0, gastado: 0, balance: 0, disponible: selectedBudget.presupuesto_asignado }}
-              movements={selectedMovements}
-              canEdit={canEdit}
-              onBack={() => setSelectedAdvisorId(null)}
-              onEditBudget={() => setEditingAdvisor(selectedAdvisor)}
-              onRegisterMovement={() => openNewMovementFor(selectedAdvisor.id)}
-              onEditMovement={(m) => {
-                setEditingMovement(m);
-                setMovementError(null);
-              }}
-              onDeleteMovement={(m) => setPendingDeleteMovement(m)}
-            />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="selector"
-            initial={{ opacity: 0, x: -12 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 12 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h1 className="font-display text-2xl font-extrabold tracking-tight text-admin-text">Finanzas</h1>
-                <p className="mt-1 text-sm font-medium text-admin-text-muted">
-                  Selecciona un integrante para ver su perfil financiero.
-                </p>
+      {loading ? (
+        <div className="grid gap-5 lg:grid-cols-[260px_1fr]">
+          <Skeleton className="h-96 w-full rounded-admin-lg" />
+          <div className="flex flex-col gap-4">
+            <Skeleton className="h-16 w-full rounded-admin-lg" />
+            <Skeleton className="h-20 w-full rounded-admin-lg" />
+            <Skeleton className="h-64 w-full rounded-admin-lg" />
+          </div>
+        </div>
+      ) : (
+        <div className="grid gap-5 lg:grid-cols-[260px_1fr] lg:items-start">
+          <MemberRail
+            advisors={advisors ?? []}
+            summaries={summaries}
+            disponibleTotal={disponibleTotal}
+            selectedId={selectedAdvisorId}
+            onSelect={setSelectedAdvisorId}
+          />
+
+          <div className="flex min-w-0 flex-col gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-display text-sm font-bold text-white"
+                  style={{ backgroundColor: selectedAdvisor?.color ?? "#6b7280" }}
+                >
+                  {selectedAdvisor ? selectedAdvisor.name.slice(0, 1).toUpperCase() : "Σ"}
+                </div>
+                <div>
+                  <h2 className="font-display text-lg font-bold tracking-tight text-admin-text">
+                    {selectedAdvisor?.name ?? "Todos los integrantes"}
+                  </h2>
+                  <p className="text-xs text-admin-text-muted">{selectedAdvisor ? "Perfil financiero individual" : "Vista combinada"}</p>
+                </div>
               </div>
-              {canEdit ? (
-                <Button variant="secondary" size="sm" icon={<UploadIcon className="h-4 w-4" />} onClick={() => setImportOpen(true)}>
-                  Importar Excel
-                </Button>
-              ) : (
+
+              {canEdit && selectedAdvisor && selectedBudget && selectedSummary && (
+                <div className="relative flex items-center gap-2">
+                  <Popover
+                    open={budgetPopoverOpen}
+                    onClose={() => setBudgetPopoverOpen(false)}
+                    width={280}
+                    anchor="group"
+                    trigger={
+                      <Button variant="secondary" size="sm" icon={<PencilIcon className="h-4 w-4" />} onClick={() => setBudgetPopoverOpen((v) => !v)}>
+                        Editar presupuesto
+                      </Button>
+                    }
+                  >
+                    <BudgetPopoverForm
+                      advisor={selectedAdvisor}
+                      budget={selectedBudget}
+                      summary={selectedSummary}
+                      saving={savingMember}
+                      onCancel={() => setBudgetPopoverOpen(false)}
+                      onSave={handleSaveMember}
+                    />
+                  </Popover>
+
+                  <Popover
+                    open={movementPopoverOpen}
+                    onClose={() => {
+                      setMovementPopoverOpen(false);
+                      setEditingMovement(null);
+                    }}
+                    width={300}
+                    anchor="group"
+                    trigger={
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        icon={<PlusIcon className="h-4 w-4" />}
+                        onClick={() => {
+                          setEditingMovement(null);
+                          setMovementError(null);
+                          setMovementPopoverOpen(true);
+                        }}
+                      >
+                        Nuevo movimiento
+                      </Button>
+                    }
+                  >
+                    <MovementPopoverForm
+                      advisor={selectedAdvisor}
+                      initial={editingMovement ?? undefined}
+                      saving={savingMovement}
+                      error={movementError}
+                      onCancel={() => {
+                        setMovementPopoverOpen(false);
+                        setEditingMovement(null);
+                      }}
+                      onSubmit={handleSubmitMovement}
+                    />
+                  </Popover>
+                </div>
+              )}
+              {!canEdit && (
                 <p className="rounded-admin-md bg-admin-bg px-3 py-2 text-xs font-medium text-admin-text-muted">
                   Solo el administrador financiero puede modificar esta información.
                 </p>
               )}
+              {canEdit && !selectedAdvisor && (
+                <Button variant="secondary" size="sm" icon={<UploadIcon className="h-4 w-4" />} onClick={() => setImportOpen(true)}>
+                  Importar Excel
+                </Button>
+              )}
             </div>
 
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {loading
-                ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-72 w-full rounded-admin-xl" />)
-                : advisors?.map((advisor) => {
-                    const budget = budgets?.find((b) => b.advisor_id === advisor.id);
-                    if (!budget) return null;
-                    const summary = summaries.get(advisor.id) ?? { ganado: 0, gastado: 0, balance: 0, disponible: budget.presupuesto_asignado };
-                    return (
-                      <MemberCard
-                        key={advisor.id}
-                        advisor={advisor}
-                        budget={budget}
-                        summary={summary}
-                        canEdit={canEdit}
-                        onSelect={() => setSelectedAdvisorId(advisor.id)}
-                        onEdit={() => setEditingAdvisor(advisor)}
-                      />
-                    );
-                  })}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <StatStrip stats={stats} />
+            <FlowSparkline data={monthlyFlow} />
 
-      <EditMemberDrawer
-        advisor={editingAdvisor}
-        budget={editingAdvisor ? (budgets ?? []).find((b) => b.advisor_id === editingAdvisor.id) ?? null : null}
-        summary={editingAdvisor ? summaries.get(editingAdvisor.id) ?? null : null}
-        saving={savingMember}
-        onClose={() => setEditingAdvisor(null)}
-        onSave={handleSaveMember}
-      />
-
-      <MovementDrawer
-        movement={editingMovement}
-        advisor={movementAdvisor}
-        saving={savingMovement}
-        error={movementError}
-        onClose={() => setEditingMovement(null)}
-        onChange={setEditingMovement}
-        onSubmit={handleSubmitMovement}
-      />
+            <TransactionList
+              table={table}
+              advisors={advisors ?? []}
+              loading={false}
+              canEdit={canEdit}
+              showAdvisor={!selectedAdvisor}
+              onEdit={(m) => {
+                setEditingMovement(m);
+                setMovementError(null);
+                setMovementPopoverOpen(true);
+              }}
+              onDelete={(m) => setPendingDeleteMovement(m)}
+              onExportExcel={() => exportMovementsToExcel(scopeMovements, exportAdvisors)}
+              onExportPdf={() => exportMovementsToPdf(scopeMovements, exportAdvisors)}
+              emptyState={
+                selectedAdvisor
+                  ? {
+                      title: `${selectedAdvisor.name} aún no tiene movimientos.`,
+                      description: "Registra su primer ingreso o gasto para empezar a ver su historial.",
+                      actionLabel: canEdit ? "Registrar movimiento" : undefined,
+                      onAction: canEdit
+                        ? () => {
+                            setEditingMovement(null);
+                            setMovementError(null);
+                            setMovementPopoverOpen(true);
+                          }
+                        : undefined,
+                    }
+                  : { title: "Aún no hay movimientos registrados." }
+              }
+            />
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         open={pendingDeleteMovement !== null}
