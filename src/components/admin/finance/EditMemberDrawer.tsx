@@ -3,8 +3,10 @@
 import { useState, type FormEvent } from "react";
 import { Drawer } from "@/components/ui/admin/Drawer";
 import { CurrencyInput } from "@/components/ui/admin/CurrencyInput";
+import { CollapsibleField } from "@/components/ui/admin/CollapsibleField";
 import { Textarea } from "@/components/ui/admin/Textarea";
 import Button from "@/components/ui/Button";
+import { formatCOP } from "@/lib/format";
 import type { Budget, BudgetSummary } from "@/data/finance";
 import type { Advisor } from "@/data/advisors";
 
@@ -43,14 +45,35 @@ function MemberForm({
 
   const ganadoChanged = ganado !== summary.ganado;
   const gastadoChanged = gastado !== summary.gastado;
+  const disponible = presupuesto + ganado - gastado;
 
   return (
-    <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-      <CurrencyInput label="Presupuesto asignado" autoFocus value={presupuesto} onChange={setPresupuesto} />
+    <form className="flex flex-col gap-7" onSubmit={handleSubmit}>
+      {/* The outcome, computed live — editing the numbers below moves this. */}
+      <div className="rounded-admin-xl bg-gradient-to-br from-royal-500 to-navy-900 p-5 text-white">
+        <p className="text-xs font-semibold uppercase tracking-wider text-white/70">Disponible</p>
+        <p className={`mt-1 font-display text-3xl font-extrabold tracking-tight ${disponible < 0 ? "text-rose-300" : "text-white"}`}>
+          {formatCOP(disponible)}
+        </p>
+      </div>
 
-      <div className="flex flex-col gap-4 rounded-admin-md bg-admin-bg p-4">
-        <CurrencyInput label="Ganado (total)" value={ganado} onChange={setGanado} />
-        <CurrencyInput label="Gastado (total)" value={gastado} onChange={setGastado} />
+      {/* Presupuesto — the one field that isn't a movement-backed total. */}
+      <div className="rounded-admin-lg border border-admin-border bg-admin-bg p-4">
+        <CurrencyInput label="Presupuesto asignado" autoFocus value={presupuesto} onChange={setPresupuesto} />
+      </div>
+
+      {/* Ganado / Gastado — edited as a pair of stat tiles, not two more
+          stacked full-width fields, since they're conceptually one
+          decision (adjust the totals) rather than two separate ones. */}
+      <div className="flex flex-col gap-3 rounded-admin-lg border border-admin-border bg-admin-bg p-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-admin-md border border-admin-border bg-admin-surface p-3">
+            <CurrencyInput label="Ganado" bare tone="positive" value={ganado} onChange={setGanado} />
+          </div>
+          <div className="rounded-admin-md border border-admin-border bg-admin-surface p-3">
+            <CurrencyInput label="Gastado" bare tone="negative" value={gastado} onChange={setGastado} />
+          </div>
+        </div>
         {(ganadoChanged || gastadoChanged) && (
           <p className="text-xs font-medium text-admin-text-muted">
             Al guardar se registrará un movimiento de ajuste automático por la diferencia, para que
@@ -59,9 +82,16 @@ function MemberForm({
         )}
       </div>
 
-      <Textarea label="Observaciones" rows={4} value={observaciones} onChange={(e) => setObservaciones(e.target.value)} />
+      <CollapsibleField label="Agregar observaciones" defaultOpen={!!budget.observaciones}>
+        <Textarea
+          label="Observaciones"
+          rows={4}
+          value={observaciones}
+          onChange={(e) => setObservaciones(e.target.value)}
+        />
+      </CollapsibleField>
 
-      <div className="mt-2 flex gap-3">
+      <div className="mt-1 flex gap-3">
         <Button type="submit" variant="primary" className="flex-1" disabled={saving}>
           {saving ? "Guardando..." : "Guardar"}
         </Button>
