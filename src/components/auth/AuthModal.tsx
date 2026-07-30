@@ -20,12 +20,14 @@ function PasswordField({
   onChange,
   placeholder,
   minLength,
+  autoComplete,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
   minLength?: number;
+  autoComplete: "current-password" | "new-password";
 }) {
   const [visible, setVisible] = useState(false);
 
@@ -35,6 +37,8 @@ function PasswordField({
       <div className="relative">
         <input
           type={visible ? "text" : "password"}
+          name="password"
+          autoComplete={autoComplete}
           required
           minLength={minLength}
           value={value}
@@ -167,6 +171,9 @@ export default function AuthModal({
                 <span className={labelClasses}>Correo electrónico</span>
                 <input
                   type="email"
+                  name="email"
+                  autoComplete="username"
+                  inputMode="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -179,6 +186,7 @@ export default function AuthModal({
                 value={password}
                 onChange={setPassword}
                 placeholder="••••••••"
+                autoComplete="current-password"
               />
 
               {error && <p className="text-sm text-rose-600">{error}</p>}
@@ -227,6 +235,8 @@ export default function AuthModal({
                   <span className={labelClasses}>Nombre completo</span>
                   <input
                     type="text"
+                    name="fullName"
+                    autoComplete="name"
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -238,6 +248,9 @@ export default function AuthModal({
                   <span className={labelClasses}>Correo electrónico</span>
                   <input
                     type="email"
+                    name="email"
+                    autoComplete="username"
+                    inputMode="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -251,6 +264,7 @@ export default function AuthModal({
                   onChange={setPassword}
                   placeholder="Mínimo 6 caracteres"
                   minLength={6}
+                  autoComplete="new-password"
                 />
 
                 {error && <p className="text-sm text-rose-600">{error}</p>}
@@ -293,6 +307,9 @@ export default function AuthModal({
                   <span className={labelClasses}>Correo electrónico</span>
                   <input
                     type="email"
+                    name="email"
+                    autoComplete="username"
+                    inputMode="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}

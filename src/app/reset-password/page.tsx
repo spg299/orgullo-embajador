@@ -87,6 +87,8 @@ export default function ResetPasswordPage() {
                   <span className={labelClasses}>Nueva contraseña</span>
                   <input
                     type="password"
+                    name="password"
+                    autoComplete="new-password"
                     required
                     minLength={6}
                     value={password}
@@ -99,6 +101,8 @@ export default function ResetPasswordPage() {
                   <span className={labelClasses}>Confirmar contraseña</span>
                   <input
                     type="password"
+                    name="confirmPassword"
+                    autoComplete="new-password"
                     required
                     minLength={6}
                     value={confirmPassword}
