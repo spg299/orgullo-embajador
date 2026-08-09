@@ -7,7 +7,6 @@ import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import { CheckIcon, WhatsAppIcon, CardIcon } from "@/components/ui/Icons";
 import { formatCOP } from "@/lib/format";
-import { siteSettings as defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
 
 type OrderStatus = "pending_payment" | "paid" | "declined" | "voided" | "error";
 
@@ -15,7 +14,8 @@ interface OrderStatusResult {
   status: OrderStatus;
   matchLabel: string;
   total: number;
-  items: { tierName: string; quantity: number }[];
+  whatsappRedirected: boolean;
+  whatsappUrl?: string;
 }
 
 const MAX_ATTEMPTS = 40; // ~2 minutes at 3s intervals
@@ -31,11 +31,11 @@ export default function PaymentResult() {
   const [result, setResult] = useState<OrderStatusResult | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
-  const [whatsappNumber, setWhatsappNumber] = useState(defaultSiteSettings.whatsapp_number);
-
-  useEffect(() => {
-    fetchSiteSettings().then((settings) => setWhatsappNumber(settings.whatsapp_number));
-  }, []);
+  // Guards against opening WhatsApp twice within this same page session
+  // (e.g. two poll ticks both seeing whatsappRedirected: false before the
+  // mark-redirected call lands) — the durable, reload-proof guard is the
+  // server's whatsapp_redirected_at column, reflected in whatsappRedirected.
+  const [autoOpened, setAutoOpened] = useState(false);
 
   // Self-scheduling poll — this page is the Wompi redirect-url target, and
   // per spec it NEVER treats the buyer's return here as proof of anything.
@@ -80,6 +80,39 @@ export default function PaymentResult() {
       clearTimeout(timeoutId);
     };
   }, [reference]);
+
+  // Auto-redirect to WhatsApp — but only once the DB itself says 'paid'
+  // (never because the buyer merely landed back on this page from Wompi)
+  // and only the first time: whatsappRedirected persists server-side, so a
+  // reload of this exact URL never re-opens WhatsApp again.
+  useEffect(() => {
+    if (!result || result.status !== "paid" || !result.whatsappUrl) return;
+    if (result.whatsappRedirected || autoOpened) return;
+
+    const whatsappUrl = result.whatsappUrl;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        await fetch("/api/wompi/mark-redirected", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reference }),
+        });
+      } catch {
+        // Best-effort — the manual "Abrir WhatsApp" button below still
+        // works even if this call fails; worst case a reload could open
+        // WhatsApp once more.
+      }
+      if (cancelled) return;
+      window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      setAutoOpened(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [result, autoOpened, reference]);
 
   if (!reference) {
     return (
@@ -134,19 +167,6 @@ export default function PaymentResult() {
   }
 
   if (result.status === "paid") {
-    const lines = [
-      "Hola, mi pago con tarjeta fue aprobado ✅",
-      "",
-      `Referencia: ${reference}`,
-      `Partido: ${result.matchLabel}`,
-      "",
-      "Boletas:",
-      ...result.items.map((item) => `- ${item.tierName} x${item.quantity}`),
-      "",
-      `Total pagado: ${formatCOP(result.total)}`,
-    ];
-    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(lines.join("\n"))}`;
-
     return (
       <Container className="py-16 sm:py-24">
         <div className={shellClasses}>
@@ -160,11 +180,17 @@ export default function PaymentResult() {
             {result.matchLabel} · Total {formatCOP(result.total)}
           </p>
           <p className="mt-1 text-xs font-medium text-navy-700/50">Referencia: {reference}</p>
-          <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="mt-6 inline-block">
-            <Button type="button" variant="whatsapp" icon={<WhatsAppIcon className="h-5 w-5" />}>
-              Continuar a WhatsApp
-            </Button>
-          </a>
+          <p className="mx-auto mt-4 max-w-sm text-sm font-medium text-navy-700/70">
+            Estamos abriendo WhatsApp automáticamente para confirmar tu compra. Si no se abrió, usa
+            el botón de abajo.
+          </p>
+          {result.whatsappUrl && (
+            <a href={result.whatsappUrl} target="_blank" rel="noopener noreferrer" className="mt-6 inline-block">
+              <Button type="button" variant="whatsapp" icon={<WhatsAppIcon className="h-5 w-5" />}>
+                Abrir WhatsApp
+              </Button>
+            </a>
+          )}
         </div>
       </Container>
     );
