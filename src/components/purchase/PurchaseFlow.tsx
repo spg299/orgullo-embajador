@@ -9,7 +9,8 @@ import TierRow from "@/components/purchase/TierRow";
 import PurchaseForm from "@/components/purchase/PurchaseForm";
 import OrderSummary from "@/components/purchase/OrderSummary";
 import WhatsAppCheckoutBox from "@/components/purchase/WhatsAppCheckoutBox";
-import { CalendarIcon, MapPinIcon } from "@/components/ui/Icons";
+import CardCheckoutBox from "@/components/purchase/CardCheckoutBox";
+import { CalendarIcon, MapPinIcon, WhatsAppIcon, CardIcon } from "@/components/ui/Icons";
 import { tiers, fetchTiers } from "@/data/tiers";
 import {
   initialBuyerFormValues,
@@ -21,6 +22,7 @@ import type { Match } from "@/data/matches";
 export default function PurchaseFlow({ match }: { match: Match }) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"whatsapp" | "card">("whatsapp");
   // Seeded with the static fallback for an identical first paint; upgraded
   // silently to the live /admin/precios data once the fetch resolves.
   const [baseTiers, setBaseTiers] = useState(tiers);
@@ -167,17 +169,63 @@ export default function PurchaseFlow({ match }: { match: Match }) {
               subtotal={subtotal}
               total={total}
             />
-            <WhatsAppCheckoutBox
-              match={match}
-              selections={selections}
-              subtotal={subtotal}
-              total={total}
-              buyer={buyerForm}
-              disabled={Boolean(disabledReason)}
-              disabledReason={disabledReason}
-              submitted={submitted}
-              onFinalize={() => setSubmitted(true)}
-            />
+
+            {!submitted && (
+              <div className="rounded-3xl border border-navy-900/8 bg-white p-2 shadow-card">
+                <p className="px-3 pt-2 text-xs font-semibold uppercase tracking-wider text-navy-700/50">
+                  Método de pago
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("whatsapp")}
+                    className={`flex items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-semibold transition-colors ${
+                      paymentMethod === "whatsapp"
+                        ? "bg-whatsapp-500 text-white"
+                        : "text-navy-700/70 hover:bg-navy-900/5"
+                    }`}
+                  >
+                    <WhatsAppIcon className="h-4 w-4" />
+                    WhatsApp
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("card")}
+                    className={`flex items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-semibold transition-colors ${
+                      paymentMethod === "card"
+                        ? "bg-royal-500 text-white"
+                        : "text-navy-700/70 hover:bg-navy-900/5"
+                    }`}
+                  >
+                    <CardIcon className="h-4 w-4" />
+                    Tarjeta
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {paymentMethod === "whatsapp" || submitted ? (
+              <WhatsAppCheckoutBox
+                match={match}
+                selections={selections}
+                subtotal={subtotal}
+                total={total}
+                buyer={buyerForm}
+                disabled={Boolean(disabledReason)}
+                disabledReason={disabledReason}
+                submitted={submitted}
+                onFinalize={() => setSubmitted(true)}
+              />
+            ) : (
+              <CardCheckoutBox
+                match={match}
+                selections={selections}
+                subtotal={subtotal}
+                buyer={buyerForm}
+                disabled={Boolean(disabledReason)}
+                disabledReason={disabledReason}
+              />
+            )}
           </div>
         </div>
       </Container>

@@ -579,3 +579,13 @@ export function EyeOffIcon({ className = "h-5 w-5" }: IconProps) {
     </svg>
   );
 }
+
+export function CardIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <rect x="2.5" y="5.5" width="19" height="13" rx="2.2" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M2.5 9.5h19" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M6 14.5h5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
