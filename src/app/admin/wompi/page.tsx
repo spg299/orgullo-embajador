@@ -14,6 +14,23 @@ import { WOMPI_STATUS_LABELS, WOMPI_STATUS_BADGE_VARIANT, type WompiOrder } from
 
 const POLL_INTERVAL_MS = 10_000;
 
+interface SecretMeta {
+  present: boolean;
+  length?: number;
+  recognizedPrefix?: string;
+  kind?: string;
+  environment?: string;
+  hasSurroundingWhitespace?: boolean;
+}
+
+interface DiagnoseResult {
+  publicKey: SecretMeta & { value: string | null };
+  integritySecret: SecretMeta;
+  eventsSecret: SecretMeta;
+  warnings: string[];
+  sampleSignatureCheck: { reference: string; amountInCents: number; currency: string; signature: string } | null;
+}
+
 async function getAccessToken() {
   const { data } = await supabase.auth.getSession();
   return data.session?.access_token;
@@ -35,9 +52,32 @@ async function fetchOrders(): Promise<{ orders: WompiOrder[]; error: string | nu
 export default function AdminWompiPage() {
   const [result, setResult] = useState<{ orders: WompiOrder[]; error: string | null } | null>(null);
   const [detail, setDetail] = useState<WompiOrder | null>(null);
+  const [diagnosis, setDiagnosis] = useState<DiagnoseResult | null>(null);
+  const [diagnosing, setDiagnosing] = useState(false);
+  const [diagnoseError, setDiagnoseError] = useState<string | null>(null);
   const loading = result === null;
   const orders = result?.orders ?? [];
   const error = result?.error ?? null;
+
+  async function runDiagnosis() {
+    setDiagnosing(true);
+    setDiagnoseError(null);
+    try {
+      const accessToken = await getAccessToken();
+      const res = await fetch("/api/admin/wompi/diagnose-signature", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? "No se pudo ejecutar el diagnóstico.");
+      setDiagnosis(body);
+    } catch (err) {
+      setDiagnoseError(err instanceof Error ? err.message : "No se pudo ejecutar el diagnóstico.");
+    } finally {
+      setDiagnosing(false);
+    }
+  }
 
   useEffect(() => {
     fetchOrders().then(setResult);
@@ -109,6 +149,100 @@ export default function AdminWompiPage() {
         Transacciones realizadas con Tarjeta a través de Wompi. Se actualiza automáticamente cuando
         Wompi confirma un pago.
       </p>
+
+      <div className="mt-6 rounded-admin-xl border border-admin-border bg-admin-surface p-5 shadow-admin-xs">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-base font-bold text-admin-text">Diagnóstico de firma</h2>
+            <p className="mt-0.5 text-xs font-medium text-admin-text-muted">
+              Verifica el tipo y ambiente de las credenciales de Wompi configuradas en Vercel — nunca
+              muestra el secreto completo.
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" onClick={runDiagnosis} disabled={diagnosing}>
+            {diagnosing ? "Ejecutando..." : "Ejecutar diagnóstico"}
+          </Button>
+        </div>
+
+        {diagnoseError && <p className="mt-4 text-sm font-medium text-rose-500">{diagnoseError}</p>}
+
+        {diagnosis && (
+          <div className="mt-4 flex flex-col gap-4">
+            {diagnosis.warnings.length > 0 ? (
+              <ul className="flex flex-col gap-1.5 rounded-admin-lg border border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+                {diagnosis.warnings.map((warning) => (
+                  <li key={warning} className="flex gap-2">
+                    <span aria-hidden="true">⚠️</span>
+                    {warning}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="rounded-admin-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
+                No se detectó ningún problema estructural en las credenciales configuradas.
+              </p>
+            )}
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-admin-lg border border-admin-border p-3 text-xs">
+                <p className="font-semibold uppercase tracking-wider text-admin-text-muted">
+                  NEXT_PUBLIC_WOMPI_PUBLIC_KEY
+                </p>
+                <p className="mt-1 break-all font-mono text-admin-text">{diagnosis.publicKey.value ?? "—"}</p>
+                <p className="mt-1 text-admin-text-muted">
+                  ambiente: <strong>{diagnosis.publicKey.environment ?? "—"}</strong>
+                </p>
+              </div>
+              <div className="rounded-admin-lg border border-admin-border p-3 text-xs">
+                <p className="font-semibold uppercase tracking-wider text-admin-text-muted">
+                  WOMPI_INTEGRITY_SECRET
+                </p>
+                <p className="mt-1 font-mono text-admin-text">
+                  {diagnosis.integritySecret.recognizedPrefix ?? "(prefijo no reconocido)"}
+                  ••••••••
+                </p>
+                <p className="mt-1 text-admin-text-muted">
+                  tipo: <strong>{diagnosis.integritySecret.kind ?? "—"}</strong> · ambiente:{" "}
+                  <strong>{diagnosis.integritySecret.environment ?? "—"}</strong> · largo:{" "}
+                  {diagnosis.integritySecret.length ?? "—"}
+                </p>
+              </div>
+              <div className="rounded-admin-lg border border-admin-border p-3 text-xs">
+                <p className="font-semibold uppercase tracking-wider text-admin-text-muted">
+                  WOMPI_EVENTS_SECRET
+                </p>
+                <p className="mt-1 font-mono text-admin-text">
+                  {diagnosis.eventsSecret.recognizedPrefix ?? "(prefijo no reconocido)"}
+                  ••••••••
+                </p>
+                <p className="mt-1 text-admin-text-muted">
+                  tipo: <strong>{diagnosis.eventsSecret.kind ?? "—"}</strong> · ambiente:{" "}
+                  <strong>{diagnosis.eventsSecret.environment ?? "—"}</strong> · largo:{" "}
+                  {diagnosis.eventsSecret.length ?? "—"}
+                </p>
+              </div>
+            </div>
+
+            {diagnosis.sampleSignatureCheck && (
+              <div className="rounded-admin-lg border border-admin-border bg-admin-bg p-3 text-xs">
+                <p className="font-semibold uppercase tracking-wider text-admin-text-muted">
+                  Firma de prueba generada ahora mismo (misma función que create-order)
+                </p>
+                <p className="mt-1 font-mono text-admin-text">
+                  reference: {diagnosis.sampleSignatureCheck.reference}
+                </p>
+                <p className="font-mono text-admin-text">
+                  amount-in-cents: {diagnosis.sampleSignatureCheck.amountInCents}
+                </p>
+                <p className="font-mono text-admin-text">currency: {diagnosis.sampleSignatureCheck.currency}</p>
+                <p className="mt-1 break-all font-mono text-admin-text">
+                  signature:integrity → {diagnosis.sampleSignatureCheck.signature}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {error ? (
         <div className="mt-6 rounded-admin-xl border border-admin-border bg-admin-surface p-6 shadow-admin-xs">
