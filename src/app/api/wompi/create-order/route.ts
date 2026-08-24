@@ -109,6 +109,19 @@ export async function POST(request: NextRequest) {
       integritySecret,
     });
 
+    const checkoutUrl = "https://checkout.wompi.co/p/";
+
+    // TEMPORARY — diagnosing "signature: La firma es inválida" in production.
+    // Only non-sensitive fields (never integritySecret). Remove once resolved.
+    console.log("[wompi:create-order]", {
+      reference,
+      amountInCents,
+      currency: CURRENCY,
+      signature,
+      publicKey,
+      checkoutUrl,
+    });
+
     return NextResponse.json({
       reference,
       amountInCents,
@@ -116,7 +129,7 @@ export async function POST(request: NextRequest) {
       signature,
       publicKey,
       redirectUrl: `${SITE_URL}/comprar/resultado?ref=${encodeURIComponent(reference)}`,
-      checkoutUrl: "https://checkout.wompi.co/p/",
+      checkoutUrl,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error desconocido";

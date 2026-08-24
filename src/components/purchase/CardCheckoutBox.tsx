@@ -82,6 +82,11 @@ export default function CardCheckoutBox({
         form.appendChild(input);
       }
 
+      // TEMPORARY — diagnosing "signature: La firma es inválida" in
+      // production. Only non-sensitive fields, exactly as submitted to
+      // Wompi's form. Remove once resolved.
+      console.log("[wompi:card-checkout] submitting to", body.checkoutUrl, fields);
+
       document.body.appendChild(form);
       form.submit();
     } catch (err) {
