@@ -27,6 +27,7 @@ const shellClasses =
 export default function PaymentResult() {
   const searchParams = useSearchParams();
   const reference = searchParams.get("ref");
+  const token = searchParams.get("token");
 
   const [result, setResult] = useState<OrderStatusResult | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -44,7 +45,7 @@ export default function PaymentResult() {
   // wrote. Stops on any terminal status, on a 404 (unknown reference), or
   // after MAX_ATTEMPTS if the order is still pending_payment.
   useEffect(() => {
-    if (!reference) return;
+    if (!reference || !token) return;
     let cancelled = false;
     let timeoutId: ReturnType<typeof setTimeout>;
     let count = 0;
@@ -52,7 +53,9 @@ export default function PaymentResult() {
     async function tick() {
       if (cancelled) return;
       try {
-        const res = await fetch(`/api/wompi/order-status?reference=${encodeURIComponent(reference as string)}`);
+        const res = await fetch(
+          `/api/wompi/order-status?reference=${encodeURIComponent(reference as string)}&token=${encodeURIComponent(token as string)}`,
+        );
         if (res.status === 404) {
           if (!cancelled) setNotFound(true);
           return;
@@ -79,7 +82,7 @@ export default function PaymentResult() {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [reference]);
+  }, [reference, token]);
 
   // Auto-redirect to WhatsApp — but only once the DB itself says 'paid'
   // (never because the buyer merely landed back on this page from Wompi)
@@ -97,7 +100,7 @@ export default function PaymentResult() {
         await fetch("/api/wompi/mark-redirected", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reference }),
+          body: JSON.stringify({ reference, token }),
         });
       } catch {
         // Best-effort — the manual "Abrir WhatsApp" button below still
@@ -112,9 +115,9 @@ export default function PaymentResult() {
     return () => {
       cancelled = true;
     };
-  }, [result, autoOpened, reference]);
+  }, [result, autoOpened, reference, token]);
 
-  if (!reference) {
+  if (!reference || !token) {
     return (
       <Container className="py-16 sm:py-24">
         <div className={shellClasses}>
