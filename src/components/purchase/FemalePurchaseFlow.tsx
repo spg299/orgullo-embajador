@@ -1,0 +1,254 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import Container from "@/components/ui/Container";
+import CrestBadge from "@/components/ui/CrestBadge";
+import ProgressSteps from "@/components/purchase/ProgressSteps";
+import TierRow from "@/components/purchase/TierRow";
+import PurchaseForm from "@/components/purchase/PurchaseForm";
+import OrderSummary from "@/components/purchase/OrderSummary";
+import FemaleWhatsAppCheckoutBox from "@/components/purchase/FemaleWhatsAppCheckoutBox";
+import FemaleCardCheckoutBox from "@/components/purchase/FemaleCardCheckoutBox";
+import { CalendarIcon, MapPinIcon, WhatsAppIcon, CardIcon } from "@/components/ui/Icons";
+import {
+  initialBuyerFormValues,
+  validateBuyerForm,
+  type BuyerFormValues,
+} from "@/lib/purchaseFormValidation";
+import type { FemaleMatch } from "@/data/femaleMatches";
+import type { Match } from "@/data/matches";
+import type { Tier } from "@/data/tiers";
+
+// Women's matches have a single flat price per match (no shared 4-locality
+// tier system like men's tiers/precios) — this component reuses the same
+// downstream display components (TierRow, OrderSummary) by presenting that
+// one price as a single synthetic Tier-shaped "Boletería general" row.
+// PurchaseFlow.tsx (men's) is not touched or imported here at all.
+export default function FemalePurchaseFlow({ femaleMatch }: { femaleMatch: FemaleMatch }) {
+  const [quantity, setQuantity] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"whatsapp" | "card">("whatsapp");
+  const [buyerForm, setBuyerForm] = useState<BuyerFormValues>(initialBuyerFormValues);
+  const [touchedFields, setTouchedFields] = useState<
+    Partial<Record<keyof BuyerFormValues, boolean>>
+  >({});
+
+  // Adapter so OrderSummary/the header card (both built for the men's
+  // Match shape) render correctly without any changes to those components.
+  const match: Match = useMemo(
+    () => ({
+      id: femaleMatch.id,
+      home: femaleMatch.homeTeam,
+      away: femaleMatch.awayTeam,
+      homeInitial: femaleMatch.homeTeamInitial,
+      awayInitial: femaleMatch.awayTeamInitial,
+      homeCrest: femaleMatch.homeCrestUrl,
+      awayCrest: femaleMatch.awayCrestUrl,
+      competition: "♀ Fútbol Femenino",
+      date: femaleMatch.date,
+      time: femaleMatch.time,
+      stadium: femaleMatch.stadium,
+      city: "Bogotá D.C.",
+      description: femaleMatch.description,
+      imageUrl: femaleMatch.imageUrl,
+    }),
+    [femaleMatch],
+  );
+
+  const generalTier: Tier = useMemo(
+    () => ({
+      id: "general",
+      name: "Boletería general",
+      description: "Entrada general para el partido femenino.",
+      color: "#0f3fb0",
+      price: femaleMatch.price,
+      availability: femaleMatch.status === "sold_out" ? "agotado" : "disponible",
+    }),
+    [femaleMatch.price, femaleMatch.status],
+  );
+
+  const selections = useMemo(
+    () => (quantity > 0 && generalTier.availability !== "agotado" ? [{ tier: generalTier, quantity }] : []),
+    [generalTier, quantity],
+  );
+
+  const subtotal = selections.reduce((sum, { tier, quantity: q }) => sum + tier.price * q, 0);
+  const total = subtotal;
+  const hasSelection = selections.length > 0;
+
+  const formErrors = useMemo(() => validateBuyerForm(buyerForm), [buyerForm]);
+  const isFormValid = Object.keys(formErrors).length === 0;
+
+  const disabledReason = !hasSelection
+    ? "Selecciona al menos una boleta para continuar."
+    : !isFormValid
+      ? "Completa todos los datos requeridos para continuar."
+      : null;
+
+  function handleFieldChange(field: keyof BuyerFormValues, value: string | boolean) {
+    setBuyerForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function handleFieldBlur(field: keyof BuyerFormValues) {
+    setTouchedFields((prev) => ({ ...prev, [field]: true }));
+  }
+
+  return (
+    <section className="bg-royal-50/40 py-12 sm:py-16">
+      <Container>
+        <div className="flex flex-col gap-2">
+          <Link
+            href="/"
+            className="text-sm font-medium text-royal-500 transition-colors hover:text-royal-600"
+          >
+            ← Volver al inicio
+          </Link>
+          <div className="flex items-center gap-3">
+            <h1 className="font-display text-3xl font-extrabold tracking-tight text-navy-950 sm:text-4xl">
+              Completa tu compra
+            </h1>
+            <span className="inline-flex items-center gap-1 rounded-full bg-royal-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-royal-600">
+              ♀ Femenino
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-8 rounded-3xl border border-navy-900/8 bg-white p-6 shadow-card sm:p-8">
+          <ProgressSteps current={submitted ? 4 : 2} />
+        </div>
+
+        <div className="mt-6 flex flex-col gap-4 rounded-3xl border border-navy-900/8 bg-white p-6 shadow-card sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center -space-x-3">
+              <CrestBadge
+                initial={match.homeInitial}
+                size="md"
+                crestSrc={match.homeCrest}
+                alt={`Escudo de ${match.home}`}
+              />
+              <CrestBadge
+                initial={match.awayInitial}
+                size="md"
+                crestSrc={match.awayCrest}
+                alt={`Escudo de ${match.away}`}
+              />
+            </div>
+            <div>
+              <p className="font-display text-lg font-bold tracking-tight text-navy-950">
+                {match.home} <span className="text-navy-400">vs</span> {match.away}
+              </p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-royal-500">
+                {match.competition}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-sm font-medium text-navy-700/70">
+            <span className="flex items-center gap-1.5">
+              <CalendarIcon className="h-4 w-4 text-royal-500" />
+              {match.date} · {match.time}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <MapPinIcon className="h-4 w-4 text-royal-500" />
+              {match.stadium}, {match.city}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-10 grid gap-8 lg:grid-cols-[1.6fr_1fr] lg:items-start">
+          <div className="flex flex-col gap-8">
+            <div className="rounded-3xl border border-navy-900/8 bg-white p-6 shadow-card sm:p-8">
+              <h2 className="font-display text-xl font-bold tracking-tight text-navy-950">
+                Selecciona tus boletas
+              </h2>
+              <p className="mt-1 text-sm font-medium text-navy-700/60">
+                Escoge la cantidad de boletas que deseas comprar.
+              </p>
+
+              <div className="mt-6 space-y-4">
+                <TierRow
+                  tier={generalTier}
+                  quantity={quantity}
+                  onChange={(value) => {
+                    if (generalTier.availability === "agotado") return;
+                    setQuantity(value);
+                  }}
+                />
+              </div>
+            </div>
+
+            <PurchaseForm
+              values={buyerForm}
+              errors={formErrors}
+              touched={touchedFields}
+              onChange={handleFieldChange}
+              onBlur={handleFieldBlur}
+            />
+          </div>
+
+          <div className="flex flex-col gap-6 lg:sticky lg:top-28">
+            <OrderSummary match={match} selections={selections} subtotal={subtotal} total={total} />
+
+            {!submitted && (
+              <div className="rounded-3xl border border-navy-900/8 bg-white p-2 shadow-card">
+                <p className="px-3 pt-2 text-xs font-semibold uppercase tracking-wider text-navy-700/50">
+                  Método de pago
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("whatsapp")}
+                    className={`flex items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-semibold transition-colors ${
+                      paymentMethod === "whatsapp"
+                        ? "bg-whatsapp-500 text-white"
+                        : "text-navy-700/70 hover:bg-navy-900/5"
+                    }`}
+                  >
+                    <WhatsAppIcon className="h-4 w-4" />
+                    WhatsApp
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("card")}
+                    className={`flex items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-semibold transition-colors ${
+                      paymentMethod === "card"
+                        ? "bg-royal-500 text-white"
+                        : "text-navy-700/70 hover:bg-navy-900/5"
+                    }`}
+                  >
+                    <CardIcon className="h-4 w-4" />
+                    Tarjeta
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {paymentMethod === "whatsapp" || submitted ? (
+              <FemaleWhatsAppCheckoutBox
+                match={match}
+                selections={selections}
+                subtotal={subtotal}
+                total={total}
+                buyer={buyerForm}
+                disabled={Boolean(disabledReason)}
+                disabledReason={disabledReason}
+                submitted={submitted}
+                onFinalize={() => setSubmitted(true)}
+              />
+            ) : (
+              <FemaleCardCheckoutBox
+                match={match}
+                selections={selections}
+                subtotal={subtotal}
+                buyer={buyerForm}
+                disabled={Boolean(disabledReason)}
+                disabledReason={disabledReason}
+              />
+            )}
+          </div>
+        </div>
+      </Container>
+    </section>
+  );
+}

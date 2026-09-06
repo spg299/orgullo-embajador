@@ -23,25 +23,68 @@ export function Sidebar({ pathname }: { pathname: string }) {
 
       <nav className="flex flex-1 flex-col gap-1">
         {navItems.map((item) => {
-          const active = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="relative flex items-center gap-3 rounded-admin-md px-3 py-2.5 text-sm font-medium transition-colors"
-            >
-              {active && (
-                <motion.span
-                  layoutId="admin-active-nav"
-                  className="absolute inset-0 rounded-admin-md bg-white/10"
-                  transition={{ type: "spring", stiffness: 500, damping: 40 }}
+          if (!item.children) {
+            const active = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="relative flex items-center gap-3 rounded-admin-md px-3 py-2.5 text-sm font-medium transition-colors"
+              >
+                {active && (
+                  <motion.span
+                    layoutId="admin-active-nav"
+                    className="absolute inset-0 rounded-admin-md bg-white/10"
+                    transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                  />
+                )}
+                <item.icon
+                  className={`relative h-[18px] w-[18px] shrink-0 ${active ? "text-white" : "text-white/50"}`}
                 />
-              )}
-              <item.icon
-                className={`relative h-[18px] w-[18px] shrink-0 ${active ? "text-white" : "text-white/50"}`}
-              />
-              <span className={`relative ${active ? "text-white" : "text-white/60"}`}>{item.label}</span>
-            </Link>
+                <span className={`relative ${active ? "text-white" : "text-white/60"}`}>{item.label}</span>
+              </Link>
+            );
+          }
+
+          // Group: expanded whenever the current path matches the parent
+          // or one of its children, so landing directly on a child page
+          // (e.g. a deep link to /admin/matches/femeninos) still shows it
+          // as part of the open group instead of collapsed and hidden.
+          const groupActive = item.children.some((child) => pathname === child.href);
+          return (
+            <div key={item.href} className="flex flex-col gap-0.5">
+              <div
+                className={`flex items-center gap-3 rounded-admin-md px-3 py-2.5 text-sm font-medium ${
+                  groupActive ? "text-white" : "text-white/60"
+                }`}
+              >
+                <item.icon className={`h-[18px] w-[18px] shrink-0 ${groupActive ? "text-white" : "text-white/50"}`} />
+                <span>{item.label}</span>
+              </div>
+              <div className="ml-[18px] flex flex-col gap-0.5 border-l border-white/10 pl-4">
+                {item.children.map((child) => {
+                  const active = pathname === child.href;
+                  return (
+                    <Link
+                      key={child.href}
+                      href={child.href}
+                      className={`relative rounded-admin-md px-3 py-2 text-sm font-medium transition-colors ${
+                        active ? "text-white" : "text-white/50 hover:text-white/80"
+                      }`}
+                    >
+                      {active && (
+                        <motion.span
+                          layoutId="admin-active-nav-child"
+                          className="absolute inset-0 rounded-admin-md bg-white/10"
+                          transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                        />
+                      )}
+                      <span className="relative">{child.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </nav>

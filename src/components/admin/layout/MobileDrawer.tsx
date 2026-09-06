@@ -54,19 +54,52 @@ export function MobileDrawer({
 
             <nav className="flex flex-1 flex-col gap-1">
               {navItems.map((item) => {
-                const active = pathname === item.href;
+                if (!item.children) {
+                  const active = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={onClose}
+                      className={`flex items-center gap-3 rounded-admin-md px-3 py-2.5 text-sm font-medium transition-colors ${
+                        active ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"
+                      }`}
+                    >
+                      <item.icon className="h-[18px] w-[18px] shrink-0" />
+                      {item.label}
+                    </Link>
+                  );
+                }
+
+                const groupActive = item.children.some((child) => pathname === child.href);
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onClose}
-                    className={`flex items-center gap-3 rounded-admin-md px-3 py-2.5 text-sm font-medium transition-colors ${
-                      active ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"
-                    }`}
-                  >
-                    <item.icon className="h-[18px] w-[18px] shrink-0" />
-                    {item.label}
-                  </Link>
+                  <div key={item.href} className="flex flex-col gap-0.5">
+                    <div
+                      className={`flex items-center gap-3 rounded-admin-md px-3 py-2.5 text-sm font-medium ${
+                        groupActive ? "text-white" : "text-white/60"
+                      }`}
+                    >
+                      <item.icon className="h-[18px] w-[18px] shrink-0" />
+                      {item.label}
+                    </div>
+                    <div className="ml-[18px] flex flex-col gap-0.5 border-l border-white/10 pl-4">
+                      {item.children.map((child) => {
+                        const active = pathname === child.href;
+                        return (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            onClick={onClose}
+                            className={`rounded-admin-md px-3 py-2 text-sm font-medium transition-colors ${
+                              active ? "bg-white/10 text-white" : "text-white/50 hover:bg-white/5 hover:text-white/80"
+                            }`}
+                          >
+                            {child.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
             </nav>

@@ -134,7 +134,17 @@ export default function AdminVentasPage() {
         </div>
       ),
     },
-    { key: "match_label", header: "Partido", sortable: true },
+    {
+      key: "match_label",
+      header: "Partido",
+      sortable: true,
+      render: (s) => (
+        <div className="flex items-center gap-2">
+          <span>{s.match_label}</span>
+          {s.female_match_id && <Badge variant="info" dot={false}>Femenino</Badge>}
+        </div>
+      ),
+    },
     {
       key: "quantity",
       header: "Boletas",

@@ -6,8 +6,11 @@ import CrestBadge from "@/components/ui/CrestBadge";
 import MatchCtaButton from "@/components/home/MatchCtaButton";
 import { CalendarIcon, MapPinIcon, ArrowRightIcon } from "@/components/ui/Icons";
 import { homeMatches, fetchHomeMatches } from "@/data/homeMatches";
+import { fetchFemaleMatches } from "@/data/femaleMatches";
+import { buildPublicMatchFeed } from "@/data/publicMatchFeed";
 import { heroVideos, fetchHeroVideos } from "@/data/heroVideos";
 import { siteSettings as defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
+import { formatCOP } from "@/lib/format";
 
 const AUTOPLAY_MS = 5000;
 const RESUME_DELAY_MS = 6000;
@@ -20,6 +23,10 @@ export default function Hero() {
   // before; fetchHomeMatches then silently upgrades it to the live data
   // from /admin/matches once it resolves (or leaves it as-is if that fails).
   const [matchesData, setMatchesData] = useState(homeMatches);
+  // Fetched separately from data/femaleMatches.ts — data/homeMatches.ts and
+  // fetchHomeMatches() above are untouched; the two feeds only combine at
+  // render time via buildPublicMatchFeed below.
+  const [femaleMatchesData, setFemaleMatchesData] = useState<Awaited<ReturnType<typeof fetchFemaleMatches>>>([]);
   const [index, setIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -37,18 +44,37 @@ export default function Hero() {
 
   useEffect(() => {
     fetchHomeMatches().then(setMatchesData);
+    fetchFemaleMatches().then(setFemaleMatchesData);
     fetchHeroVideos().then(setVideos);
     fetchSiteSettings().then(setContent);
   }, []);
 
   // Same source of truth as the "Calendario de partidos de local" section:
   // the next matches that aren't sold out and are flagged for the Hero
-  // (from /admin/hero), in schedule order.
-  const upcomingMatches = useMemo(
+  // (from /admin/hero), in schedule order — now merged with any active
+  // women's matches (fetchFemaleMatches already only returns active=true).
+  const feed = useMemo(
     () =>
-      matchesData.filter((m) => m.status !== "sold_out" && m.showInHero !== false).slice(0, 3),
-    [matchesData],
+      buildPublicMatchFeed({
+        menMatches: matchesData,
+        womenMatches: femaleMatchesData,
+        millonariosCrestUrl: content.millonarios_crest_url,
+      }),
+    [matchesData, femaleMatchesData, content.millonarios_crest_url],
   );
+
+  const upcomingMatches = useMemo(() => {
+    const eligible = feed.filter(
+      (m) => m.status !== "sold_out" && (m.isWomen || matchesData.find((hm) => hm.id === m.id)?.showInHero !== false),
+    );
+    // Active women's matches are guaranteed a slide (put first) instead of
+    // being pushed out by however many men's matches happen to sort ahead
+    // of them in `feed` — an active female match must always be visible in
+    // the Hero without the user needing to visit another section.
+    const women = eligible.filter((m) => m.isWomen);
+    const men = eligible.filter((m) => !m.isWomen);
+    return [...women, ...men].slice(0, 3);
+  }, [feed, matchesData]);
 
   // Clamped for rendering/arithmetic (not stored back into state) in case
   // the live data resolves with fewer matches than the fallback and `index`
@@ -229,26 +255,31 @@ export default function Hero() {
                   <div className="flex items-center gap-4">
                     <div className="flex items-center -space-x-3">
                       <CrestBadge
-                        initial="M"
+                        initial={m.homeInitial}
                         size="md"
-                        crestSrc={content.millonarios_crest_url}
-                        alt="Escudo de Millonarios FC"
+                        crestSrc={m.homeCrest}
+                        alt={`Escudo de ${m.homeLabel}`}
                       />
                       <CrestBadge
-                        initial={m.rivalInitial}
+                        initial={m.awayInitial}
                         size="md"
-                        crestSrc={m.rivalCrest}
-                        alt={`Escudo de ${m.rival}`}
+                        crestSrc={m.awayCrest}
+                        alt={`Escudo de ${m.awayLabel}`}
                       />
                     </div>
                     <div>
                       <p className="font-display text-lg font-bold tracking-tight text-white">
-                        Millonarios <span className="text-white/40">vs</span>{" "}
-                        {m.rival}
+                        {m.homeLabel} <span className="text-white/40">vs</span> {m.awayLabel}
                       </p>
-                      <p className="text-xs font-semibold uppercase tracking-wider text-gold-300">
-                        Liga BetPlay Dimayor
-                      </p>
+                      {m.isWomen ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-royal-500/20 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-royal-200">
+                          ♀ Fútbol Femenino
+                        </span>
+                      ) : (
+                        <p className="text-xs font-semibold uppercase tracking-wider text-gold-300">
+                          Liga BetPlay Dimayor
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -263,10 +294,14 @@ export default function Hero() {
                     </span>
                   </div>
 
+                  {m.isWomen && typeof m.price === "number" && (
+                    <p className="mt-3 text-sm font-bold text-gold-300">Desde {formatCOP(m.price)}</p>
+                  )}
+
                   <div className="mt-6">
                     <MatchCtaButton
                       status={m.status}
-                      href={m.buyLink ?? `/comprar?match=${m.id}`}
+                      href={m.buyHref}
                       size="lg"
                       icon={<ArrowRightIcon className="h-4 w-4" />}
                       className="w-full sm:w-auto"
@@ -283,7 +318,7 @@ export default function Hero() {
           {upcomingMatches.map((m, i) => (
             <button
               key={m.id}
-              aria-label={`Ver partido Millonarios vs ${m.rival}`}
+              aria-label={`Ver partido ${m.homeLabel} vs ${m.awayLabel}`}
               onClick={() => {
                 goTo(i);
                 pauseThenResume();

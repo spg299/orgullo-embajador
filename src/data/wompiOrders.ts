@@ -32,6 +32,7 @@ export interface WompiOrder {
   id: string;
   reference: string;
   match_id: string | null;
+  female_match_id: string | null;
   match_label: string;
   buyer_full_name: string;
   buyer_email: string;

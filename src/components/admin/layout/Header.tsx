@@ -17,7 +17,10 @@ export function Header({
   profile: Profile | null;
   onOpenMobileNav: () => void;
 }) {
-  const currentLabel = navItems.find((item) => item.href === pathname)?.label ?? "Dashboard";
+  const currentLabel =
+    navItems.find((item) => item.href === pathname)?.label ??
+    navItems.flatMap((item) => item.children ?? []).find((child) => child.href === pathname)?.label ??
+    "Dashboard";
   const displayName = profile?.full_name || profile?.email || "Administrador";
 
   return (

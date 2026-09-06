@@ -120,7 +120,17 @@ export default function AdminWompiPage() {
         </div>
       ),
     },
-    { key: "match_label", header: "Partido", sortable: true },
+    {
+      key: "match_label",
+      header: "Partido",
+      sortable: true,
+      render: (o) => (
+        <div className="flex items-center gap-2">
+          <span>{o.match_label}</span>
+          {o.female_match_id && <Badge variant="info" dot={false}>Femenino</Badge>}
+        </div>
+      ),
+    },
     {
       key: "items",
       header: "Localidad(es)",
@@ -346,7 +356,10 @@ export default function AdminWompiPage() {
                 <dt className="text-xs font-semibold uppercase tracking-wider text-admin-text-muted">
                   Partido
                 </dt>
-                <dd className="mt-0.5 font-medium text-admin-text">{detail.match_label}</dd>
+                <dd className="mt-0.5 flex items-center gap-2 font-medium text-admin-text">
+                  <span>{detail.match_label}</span>
+                  {detail.female_match_id && <Badge variant="info" dot={false}>Femenino</Badge>}
+                </dd>
               </div>
               <div className="col-span-2">
                 <dt className="text-xs font-semibold uppercase tracking-wider text-admin-text-muted">

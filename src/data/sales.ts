@@ -41,6 +41,7 @@ export interface SaleAdvisorRef {
 export interface Sale {
   id: string;
   match_id: string | null;
+  female_match_id: string | null;
   match_label: string;
   buyer_full_name: string;
   buyer_document_number: string | null;

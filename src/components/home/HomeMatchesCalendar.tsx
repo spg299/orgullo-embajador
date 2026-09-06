@@ -8,10 +8,12 @@ import { CalendarIcon, ClockIcon, MapPinIcon } from "@/components/ui/Icons";
 import {
   homeMatches,
   fetchHomeMatches,
-  type HomeMatch,
   type MatchStatus,
 } from "@/data/homeMatches";
+import { fetchFemaleMatches } from "@/data/femaleMatches";
+import { buildPublicMatchFeed, type PublicMatchFeedItem } from "@/data/publicMatchFeed";
 import { siteSettings as defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
+import { formatCOP } from "@/lib/format";
 
 const statusConfig: Record<MatchStatus, { label: string; className: string }> = {
   sold_out: {
@@ -43,11 +45,9 @@ function StatusBadge({ status }: { status: MatchStatus }) {
 function MatchCalendarCard({
   match,
   delayMs,
-  millonariosCrest,
 }: {
-  match: HomeMatch;
+  match: PublicMatchFeedItem;
   delayMs: number;
-  millonariosCrest: string;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [inView, setInView] = useState(false);
@@ -80,7 +80,7 @@ function MatchCalendarCard({
         // eslint-disable-next-line @next/next/no-img-element -- admin-supplied URLs vary in host/size; next/image adds no real benefit here
         <img
           src={match.imageUrl}
-          alt={`Millonarios vs ${match.rival}`}
+          alt={`${match.homeLabel} vs ${match.awayLabel}`}
           className="-mx-6 -mt-6 mb-5 aspect-video w-[calc(100%+3rem)] rounded-t-3xl object-cover"
         />
       )}
@@ -88,24 +88,30 @@ function MatchCalendarCard({
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center -space-x-3">
           <CrestBadge
-            initial="M"
+            initial={match.homeInitial}
             size="sm"
-            crestSrc={millonariosCrest}
-            alt="Escudo de Millonarios FC"
+            crestSrc={match.homeCrest}
+            alt={`Escudo de ${match.homeLabel}`}
           />
           <CrestBadge
-            initial={match.rivalInitial}
+            initial={match.awayInitial}
             size="sm"
-            crestSrc={match.rivalCrest}
-            alt={`Escudo de ${match.rival}`}
+            crestSrc={match.awayCrest}
+            alt={`Escudo de ${match.awayLabel}`}
           />
         </div>
         <StatusBadge status={match.status} />
       </div>
 
       <p className="mt-4 font-display text-lg font-bold tracking-tight text-white">
-        Millonarios <span className="text-white/40">vs</span> {match.rival}
+        {match.homeLabel} <span className="text-white/40">vs</span> {match.awayLabel}
       </p>
+
+      {match.isWomen && (
+        <span className="mt-1.5 inline-flex w-fit items-center gap-1 rounded-full bg-royal-500/20 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-royal-200">
+          ♀ Fútbol Femenino
+        </span>
+      )}
 
       {match.description && (
         <p className="mt-2 text-sm font-medium leading-relaxed text-white/60">
@@ -128,12 +134,12 @@ function MatchCalendarCard({
         </p>
       </div>
 
+      {match.isWomen && typeof match.price === "number" && (
+        <p className="mt-3 text-sm font-bold text-gold-300">Desde {formatCOP(match.price)}</p>
+      )}
+
       <div className="mt-6">
-        <MatchCtaButton
-          status={match.status}
-          href={match.buyLink ?? `/comprar?match=${match.id}`}
-          className="w-full"
-        />
+        <MatchCtaButton status={match.status} href={match.buyHref} className="w-full" />
       </div>
     </div>
   );
@@ -143,12 +149,22 @@ export default function HomeMatchesCalendar() {
   // Seeded with the static fallback for an identical first paint; upgraded
   // silently to the live /admin/matches data once the fetch resolves.
   const [matches, setMatches] = useState(homeMatches);
+  // Fetched separately (data/femaleMatches.ts) — data/homeMatches.ts and
+  // fetchHomeMatches() are untouched; the two feeds only combine below.
+  const [femaleMatches, setFemaleMatches] = useState<Awaited<ReturnType<typeof fetchFemaleMatches>>>([]);
   const [settings, setSettings] = useState(defaultSiteSettings);
 
   useEffect(() => {
     fetchHomeMatches().then(setMatches);
+    fetchFemaleMatches().then(setFemaleMatches);
     fetchSiteSettings().then(setSettings);
   }, []);
+
+  const feed = buildPublicMatchFeed({
+    menMatches: matches,
+    womenMatches: femaleMatches,
+    millonariosCrestUrl: settings.millonarios_crest_url,
+  });
 
   return (
     <section id="partidos" className="relative overflow-hidden bg-navy-950 py-24">
@@ -170,13 +186,8 @@ export default function HomeMatchesCalendar() {
         </div>
 
         <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {matches.map((match, i) => (
-            <MatchCalendarCard
-              key={match.id}
-              match={match}
-              delayMs={(i % 3) * 120}
-              millonariosCrest={settings.millonarios_crest_url}
-            />
+          {feed.map((match, i) => (
+            <MatchCalendarCard key={match.id} match={match} delayMs={(i % 3) * 120} />
           ))}
         </div>
       </Container>

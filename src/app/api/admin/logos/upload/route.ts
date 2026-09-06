@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { verifyAdmin } from "@/lib/supabase/adminGuard";
 
-const ALLOWED_FOLDERS = new Set(["site", "millonarios", "rivales"]);
+const ALLOWED_FOLDERS = new Set(["site", "millonarios", "rivales", "femenino"]);
 
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
