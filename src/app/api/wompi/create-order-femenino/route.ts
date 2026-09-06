@@ -7,18 +7,23 @@ import { checkRateLimit, clientIp } from "@/lib/rateLimit";
 import { SITE_URL } from "@/lib/email/config";
 
 const CURRENCY = "COP";
-const MAX_QUANTITY = 20;
+const MAX_QUANTITY_PER_TIER = 20;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX = 8;
 
+interface CreateOrderSelection {
+  tierId: string;
+  quantity: number;
+}
+
 // Public, unauthenticated route — the women's-match equivalent of
 // /api/wompi/create-order. Same security model exactly: price is re-fetched
-// live from public.female_matches (never trusted from the client), the
-// integrity signature is computed server-side only, and the order is
-// written into the SAME wompi_orders/wompi_order_items tables (nullable
-// match_id/tier_id, tagged with female_match_id — migration 0021).
-// webhook/order-status/mark-redirected are untouched and already handle
-// this order the same way they handle a men's one, keyed by reference.
+// live per selected locality from public.female_tiers (never trusted from
+// the client), the integrity signature is computed server-side only, and
+// the order is written into the SAME wompi_orders/wompi_order_items tables
+// (nullable match_id/tier_id, tagged with female_match_id — migration
+// 0021). webhook/order-status/mark-redirected are untouched and already
+// handle this order the same way they handle a men's one, keyed by reference.
 export async function POST(request: NextRequest) {
   try {
     const { limited } = await checkRateLimit({
@@ -36,7 +41,7 @@ export async function POST(request: NextRequest) {
       femaleMatchId: string;
       matchLabel: string;
       buyer: { fullName: string; whatsapp: string; email: string };
-      selections: { quantity: number }[];
+      selections: CreateOrderSelection[];
     };
 
     if (
@@ -51,16 +56,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Datos incompletos" }, { status: 400 });
     }
 
-    const quantity = selections.reduce((sum, s) => sum + Math.trunc(s.quantity || 0), 0);
-    if (!Number.isFinite(quantity) || quantity <= 0 || quantity > MAX_QUANTITY) {
-      return NextResponse.json({ error: "Cantidad inválida" }, { status: 400 });
-    }
-
     const admin = getSupabaseAdmin();
 
     const { data: femaleMatch, error: matchError } = await admin
       .from("female_matches")
-      .select("id, price, active")
+      .select("id, active")
       .eq("id", femaleMatchId)
       .eq("active", true)
       .single();
@@ -69,8 +69,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No se pudo validar el partido" }, { status: 400 });
     }
 
-    const unitPrice = femaleMatch.price as number;
-    const subtotal = unitPrice * quantity;
+    const tierIds = [...new Set(selections.map((s) => s.tierId))];
+    const { data: tierRows, error: tiersError } = await admin
+      .from("female_tiers")
+      .select("id, name, price")
+      .in("id", tierIds);
+
+    if (tiersError || !tierRows || tierRows.length === 0) {
+      return NextResponse.json({ error: "No se pudieron validar las localidades" }, { status: 400 });
+    }
+
+    const tierById = new Map(tierRows.map((t) => [t.id as string, t]));
+    const items = selections
+      .map((s) => {
+        const tier = tierById.get(s.tierId);
+        const quantity = Math.trunc(s.quantity);
+        if (!tier || !Number.isFinite(quantity) || quantity <= 0 || quantity > MAX_QUANTITY_PER_TIER) return null;
+        return {
+          tier_id: null,
+          tier_name: `${tier.name as string} (Femenino)`,
+          quantity,
+          unit_price: tier.price as number,
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+
+    if (items.length === 0) {
+      return NextResponse.json({ error: "Selección inválida" }, { status: 400 });
+    }
+
+    const subtotal = items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
     // Same 3.5% Wompi processing-fee pass-through as the men's card flow
     // (src/lib/wompi/fees.ts) — it's a per-transaction cost, not tied to a
     // specific match, and FemaleCardCheckoutBox.tsx already displays it to
@@ -104,13 +132,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: orderError?.message ?? "No se pudo crear la orden" }, { status: 400 });
     }
 
-    const { error: itemsError } = await admin.from("wompi_order_items").insert({
-      order_id: order.id,
-      tier_id: null,
-      tier_name: "Boletería general (Femenino)",
-      quantity,
-      unit_price: unitPrice,
-    });
+    const { error: itemsError } = await admin
+      .from("wompi_order_items")
+      .insert(items.map((item) => ({ order_id: order.id, ...item })));
 
     if (itemsError) {
       return NextResponse.json({ error: itemsError.message }, { status: 400 });

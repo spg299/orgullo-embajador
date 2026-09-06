@@ -14,7 +14,6 @@ import { Select } from "@/components/ui/admin/Select";
 import { Checkbox } from "@/components/ui/admin/Checkbox";
 import { Badge } from "@/components/ui/admin/Badge";
 import { useToast } from "@/components/ui/admin/Toast";
-import { formatCOP } from "@/lib/format";
 
 type FemaleMatchStatus = "available" | "upcoming" | "sold_out";
 
@@ -200,12 +199,6 @@ export default function AdminFemaleMatchesPage() {
       render: (m) => `${m.match_date} · ${m.match_time}`,
     },
     {
-      key: "price",
-      header: "Precio",
-      sortable: true,
-      render: (m) => formatCOP(m.price),
-    },
-    {
       key: "status",
       header: "Estado",
       sortable: true,
@@ -231,9 +224,9 @@ export default function AdminFemaleMatchesPage() {
             Partidos femeninos
           </h1>
           <p className="mt-1 text-sm font-medium text-admin-text-muted">
-            Gestión independiente de los partidos masculinos — cada uno con su propio precio.
-            Cuando estén activos aparecen en el sitio público junto a los demás partidos, marcados
-            como fútbol femenino.
+            Gestión independiente de los partidos masculinos. Los precios se administran por
+            localidad en Precios femeninos. Cuando estén activos aparecen en el sitio público junto
+            a los demás partidos, marcados como fútbol femenino.
           </p>
         </div>
         <Button variant="primary" size="sm" onClick={openNew} className="self-start sm:self-auto">
@@ -420,15 +413,6 @@ export default function AdminFemaleMatchesPage() {
               required
               value={editing.stadium}
               onChange={(e) => setEditing({ ...editing, stadium: e.target.value })}
-            />
-
-            <Input
-              label="Precio por boleta (COP)"
-              type="number"
-              min={0}
-              required
-              value={editing.price}
-              onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })}
             />
 
             <Select

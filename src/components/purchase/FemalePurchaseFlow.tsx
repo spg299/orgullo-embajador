@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Container from "@/components/ui/Container";
 import CrestBadge from "@/components/ui/CrestBadge";
@@ -17,22 +17,28 @@ import {
   type BuyerFormValues,
 } from "@/lib/purchaseFormValidation";
 import type { FemaleMatch } from "@/data/femaleMatches";
+import { fetchFemaleTiers, type FemaleTier } from "@/data/femaleTiers";
 import type { Match } from "@/data/matches";
-import type { Tier } from "@/data/tiers";
 
-// Women's matches have a single flat price per match (no shared 4-locality
-// tier system like men's tiers/precios) — this component reuses the same
-// downstream display components (TierRow, OrderSummary) by presenting that
-// one price as a single synthetic Tier-shaped "Boletería general" row.
-// PurchaseFlow.tsx (men's) is not touched or imported here at all.
+// Women's matches share one locality/price list (female_tiers, managed from
+// /admin/precios/femeninos) across every active women's match — same model
+// as public.tiers for men, but a fully separate table. FemaleTier has the
+// exact same shape as men's Tier, so TierRow/OrderSummary (both built for
+// the men's system) are reused unchanged. PurchaseFlow.tsx (men's) is not
+// touched or imported here at all.
 export default function FemalePurchaseFlow({ femaleMatch }: { femaleMatch: FemaleMatch }) {
-  const [quantity, setQuantity] = useState(0);
+  const [baseTiers, setBaseTiers] = useState<FemaleTier[]>([]);
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"whatsapp" | "card">("whatsapp");
   const [buyerForm, setBuyerForm] = useState<BuyerFormValues>(initialBuyerFormValues);
   const [touchedFields, setTouchedFields] = useState<
     Partial<Record<keyof BuyerFormValues, boolean>>
   >({});
+
+  useEffect(() => {
+    fetchFemaleTiers().then(setBaseTiers);
+  }, []);
 
   // Adapter so OrderSummary/the header card (both built for the men's
   // Match shape) render correctly without any changes to those components.
@@ -56,21 +62,14 @@ export default function FemalePurchaseFlow({ femaleMatch }: { femaleMatch: Femal
     [femaleMatch],
   );
 
-  const generalTier: Tier = useMemo(
-    () => ({
-      id: "general",
-      name: "Boletería general",
-      description: "Entrada general para el partido femenino.",
-      color: "#0f3fb0",
-      price: femaleMatch.price,
-      availability: femaleMatch.status === "sold_out" ? "agotado" : "disponible",
-    }),
-    [femaleMatch.price, femaleMatch.status],
-  );
-
   const selections = useMemo(
-    () => (quantity > 0 && generalTier.availability !== "agotado" ? [{ tier: generalTier, quantity }] : []),
-    [generalTier, quantity],
+    () =>
+      baseTiers
+        .map((tier) => ({ tier, quantity: quantities[tier.id] ?? 0 }))
+        .filter(
+          (selection) => selection.quantity > 0 && selection.tier.availability !== "agotado",
+        ),
+    [baseTiers, quantities],
   );
 
   const subtotal = selections.reduce((sum, { tier, quantity: q }) => sum + tier.price * q, 0);
@@ -163,18 +162,21 @@ export default function FemalePurchaseFlow({ femaleMatch }: { femaleMatch: Femal
                 Selecciona tus boletas
               </h2>
               <p className="mt-1 text-sm font-medium text-navy-700/60">
-                Escoge la cantidad de boletas que deseas comprar.
+                Escoge la localidad y la cantidad de boletas que deseas comprar.
               </p>
 
               <div className="mt-6 space-y-4">
-                <TierRow
-                  tier={generalTier}
-                  quantity={quantity}
-                  onChange={(value) => {
-                    if (generalTier.availability === "agotado") return;
-                    setQuantity(value);
-                  }}
-                />
+                {baseTiers.map((tier) => (
+                  <TierRow
+                    key={tier.id}
+                    tier={tier}
+                    quantity={quantities[tier.id] ?? 0}
+                    onChange={(value) => {
+                      if (tier.availability === "agotado") return;
+                      setQuantities((prev) => ({ ...prev, [tier.id]: value }));
+                    }}
+                  />
+                ))}
               </div>
             </div>
 

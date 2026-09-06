@@ -25,7 +25,10 @@ export interface PublicMatchFeedItem {
   buyHref: string;
   isWomen: boolean;
   /** Only meaningful for women's matches — men's items are always undefined
-   * here (men's pricing is per-tier, shown only inside /comprar). */
+   * here (men's pricing is per-tier, shown only inside /comprar). The
+   * "desde" price shown on the public site — the lowest non-agotado price
+   * across female_tiers (a list shared by every women's match, same as
+   * public.tiers is shared by every men's match), not a per-match value. */
   price?: number;
 }
 
@@ -33,10 +36,15 @@ export function buildPublicMatchFeed({
   menMatches,
   womenMatches,
   millonariosCrestUrl,
+  womenStartingPrice,
 }: {
   menMatches: HomeMatch[];
   womenMatches: FemaleMatch[];
   millonariosCrestUrl: string;
+  /** Lowest non-agotado price across female_tiers, precomputed by the
+   * caller (Hero/HomeMatchesCalendar) — shared across every women's item
+   * below, since female_tiers is one list for all women's matches. */
+  womenStartingPrice?: number;
 }): PublicMatchFeedItem[] {
   const menItems: PublicMatchFeedItem[] = menMatches.map((m) => ({
     id: m.id,
@@ -72,7 +80,7 @@ export function buildPublicMatchFeed({
     imageUrl: m.imageUrl,
     buyHref: `/comprar-femenino?match=${m.id}`,
     isWomen: true,
-    price: m.price,
+    price: womenStartingPrice,
   }));
 
   return [...menItems, ...womenItems];

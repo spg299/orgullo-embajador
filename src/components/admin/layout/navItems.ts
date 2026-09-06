@@ -40,7 +40,15 @@ export const navItems: AdminNavItem[] = [
       { href: "/admin/matches/femeninos", label: "Partidos femeninos" },
     ],
   },
-  { href: "/admin/precios", label: "Precios", icon: TagIcon },
+  {
+    href: "/admin/precios",
+    label: "Precios",
+    icon: TagIcon,
+    children: [
+      { href: "/admin/precios", label: "Precios actuales" },
+      { href: "/admin/precios/femeninos", label: "Precios femeninos" },
+    ],
+  },
   { href: "/admin/logos", label: "Logos", icon: PhotoIcon },
   { href: "/admin/hero", label: "Hero", icon: VideoIcon },
   { href: "/admin/testimonials", label: "Testimonios", icon: StarIcon },

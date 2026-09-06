@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Container from "@/components/ui/Container";
 import CrestBadge from "@/components/ui/CrestBadge";
 import MatchCtaButton from "@/components/home/MatchCtaButton";
@@ -11,6 +11,7 @@ import {
   type MatchStatus,
 } from "@/data/homeMatches";
 import { fetchFemaleMatches } from "@/data/femaleMatches";
+import { fetchFemaleTiers } from "@/data/femaleTiers";
 import { buildPublicMatchFeed, type PublicMatchFeedItem } from "@/data/publicMatchFeed";
 import { siteSettings as defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
 import { formatCOP } from "@/lib/format";
@@ -152,18 +153,27 @@ export default function HomeMatchesCalendar() {
   // Fetched separately (data/femaleMatches.ts) — data/homeMatches.ts and
   // fetchHomeMatches() are untouched; the two feeds only combine below.
   const [femaleMatches, setFemaleMatches] = useState<Awaited<ReturnType<typeof fetchFemaleMatches>>>([]);
+  const [femaleTiers, setFemaleTiers] = useState<Awaited<ReturnType<typeof fetchFemaleTiers>>>([]);
   const [settings, setSettings] = useState(defaultSiteSettings);
 
   useEffect(() => {
     fetchHomeMatches().then(setMatches);
     fetchFemaleMatches().then(setFemaleMatches);
+    fetchFemaleTiers().then(setFemaleTiers);
     fetchSiteSettings().then(setSettings);
   }, []);
+
+  const womenStartingPrice = useMemo(() => {
+    const available = femaleTiers.filter((t) => t.availability !== "agotado");
+    if (available.length === 0) return undefined;
+    return Math.min(...available.map((t) => t.price));
+  }, [femaleTiers]);
 
   const feed = buildPublicMatchFeed({
     menMatches: matches,
     womenMatches: femaleMatches,
     millonariosCrestUrl: settings.millonarios_crest_url,
+    womenStartingPrice,
   });
 
   return (

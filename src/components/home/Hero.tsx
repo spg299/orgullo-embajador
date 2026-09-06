@@ -7,6 +7,7 @@ import MatchCtaButton from "@/components/home/MatchCtaButton";
 import { CalendarIcon, MapPinIcon, ArrowRightIcon } from "@/components/ui/Icons";
 import { homeMatches, fetchHomeMatches } from "@/data/homeMatches";
 import { fetchFemaleMatches } from "@/data/femaleMatches";
+import { fetchFemaleTiers } from "@/data/femaleTiers";
 import { buildPublicMatchFeed } from "@/data/publicMatchFeed";
 import { heroVideos, fetchHeroVideos } from "@/data/heroVideos";
 import { siteSettings as defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
@@ -27,6 +28,10 @@ export default function Hero() {
   // fetchHomeMatches() above are untouched; the two feeds only combine at
   // render time via buildPublicMatchFeed below.
   const [femaleMatchesData, setFemaleMatchesData] = useState<Awaited<ReturnType<typeof fetchFemaleMatches>>>([]);
+  // Shared "desde" price shown on every active women's match — the lowest
+  // non-agotado price across female_tiers (data/femaleTiers.ts), same list
+  // /admin/precios/femeninos manages. Independent from public.tiers.
+  const [femaleTiersData, setFemaleTiersData] = useState<Awaited<ReturnType<typeof fetchFemaleTiers>>>([]);
   const [index, setIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -45,6 +50,7 @@ export default function Hero() {
   useEffect(() => {
     fetchHomeMatches().then(setMatchesData);
     fetchFemaleMatches().then(setFemaleMatchesData);
+    fetchFemaleTiers().then(setFemaleTiersData);
     fetchHeroVideos().then(setVideos);
     fetchSiteSettings().then(setContent);
   }, []);
@@ -53,14 +59,21 @@ export default function Hero() {
   // the next matches that aren't sold out and are flagged for the Hero
   // (from /admin/hero), in schedule order — now merged with any active
   // women's matches (fetchFemaleMatches already only returns active=true).
+  const womenStartingPrice = useMemo(() => {
+    const available = femaleTiersData.filter((t) => t.availability !== "agotado");
+    if (available.length === 0) return undefined;
+    return Math.min(...available.map((t) => t.price));
+  }, [femaleTiersData]);
+
   const feed = useMemo(
     () =>
       buildPublicMatchFeed({
         menMatches: matchesData,
         womenMatches: femaleMatchesData,
         millonariosCrestUrl: content.millonarios_crest_url,
+        womenStartingPrice,
       }),
-    [matchesData, femaleMatchesData, content.millonarios_crest_url],
+    [matchesData, femaleMatchesData, content.millonarios_crest_url, womenStartingPrice],
   );
 
   const upcomingMatches = useMemo(() => {
