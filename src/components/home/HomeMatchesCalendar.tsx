@@ -14,7 +14,6 @@ import { fetchFemaleMatches } from "@/data/femaleMatches";
 import { fetchFemaleTiers } from "@/data/femaleTiers";
 import { buildPublicMatchFeed, type PublicMatchFeedItem } from "@/data/publicMatchFeed";
 import { siteSettings as defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
-import { formatCOP } from "@/lib/format";
 
 const statusConfig: Record<MatchStatus, { label: string; className: string }> = {
   sold_out: {
@@ -109,7 +108,7 @@ function MatchCalendarCard({
       </p>
 
       {match.isWomen && (
-        <span className="mt-1.5 inline-flex w-fit items-center gap-1 rounded-full bg-royal-500/20 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-royal-200">
+        <span className="mt-1.5 inline-flex w-fit items-center gap-1 rounded-full bg-pink-500/25 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-pink-200">
           ♀ Fútbol Femenino
         </span>
       )}
@@ -134,10 +133,6 @@ function MatchCalendarCard({
           {match.stadium}
         </p>
       </div>
-
-      {match.isWomen && typeof match.price === "number" && (
-        <p className="mt-3 text-sm font-bold text-gold-300">Desde {formatCOP(match.price)}</p>
-      )}
 
       <div className="mt-6">
         <MatchCtaButton status={match.status} href={match.buyHref} className="w-full" />

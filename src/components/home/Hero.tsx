@@ -11,7 +11,6 @@ import { fetchFemaleTiers } from "@/data/femaleTiers";
 import { buildPublicMatchFeed } from "@/data/publicMatchFeed";
 import { heroVideos, fetchHeroVideos } from "@/data/heroVideos";
 import { siteSettings as defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
-import { formatCOP } from "@/lib/format";
 
 const AUTOPLAY_MS = 5000;
 const RESUME_DELAY_MS = 6000;
@@ -285,7 +284,7 @@ export default function Hero() {
                         {m.homeLabel} <span className="text-white/40">vs</span> {m.awayLabel}
                       </p>
                       {m.isWomen ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-royal-500/20 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-royal-200">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-pink-500/25 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-pink-200">
                           ♀ Fútbol Femenino
                         </span>
                       ) : (
@@ -306,10 +305,6 @@ export default function Hero() {
                       {m.stadium}, Bogotá D.C.
                     </span>
                   </div>
-
-                  {m.isWomen && typeof m.price === "number" && (
-                    <p className="mt-3 text-sm font-bold text-gold-300">Desde {formatCOP(m.price)}</p>
-                  )}
 
                   <div className="mt-6">
                     <MatchCtaButton
