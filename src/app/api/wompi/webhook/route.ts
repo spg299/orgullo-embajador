@@ -22,9 +22,22 @@ interface WompiTransaction {
 // request. This is the ONLY place an order may move out of
 // 'pending_payment' — the post-payment redirect page never marks anything
 // paid on its own, it only ever reads what this handler already wrote.
+//
+// Response codes matter here: Wompi only retries (up to 3 times, over ~24h)
+// when we DON'T answer 2xx. So permanent problems (bad signature, unknown
+// reference, amount mismatch) answer 4xx/2xx and stop the retry loop, but a
+// transient failure on our side (DB unreachable, failed write) must answer
+// 5xx — otherwise a real, approved payment would be silently lost and the
+// order stuck in 'pending_payment' forever.
 export async function POST(request: NextRequest) {
+  let body: unknown;
   try {
-    const body = await request.json();
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
+  }
+
+  try {
     const { event, data, signature, timestamp } = body as {
       event: string;
       data: { transaction?: WompiTransaction };
@@ -71,10 +84,26 @@ export async function POST(request: NextRequest) {
       .eq("reference", reference)
       .maybeSingle();
 
-    if (fetchError || !order) {
+    if (fetchError) {
+      // Transient — let Wompi retry.
+      console.error("wompi webhook: order lookup failed", reference, fetchError.message);
+      return NextResponse.json({ error: "Error consultando la orden" }, { status: 500 });
+    }
+
+    if (!order) {
       // Nothing a retry of this exact payload can fix — acknowledge so
       // Wompi doesn't keep resending it.
       console.error("wompi webhook: unknown reference", reference);
+      return NextResponse.json({ ok: true });
+    }
+
+    // Wompi can send several transactions for one reference (the buyer
+    // retries after a decline) and doesn't guarantee delivery order, so a
+    // late DECLINED/ERROR for an earlier attempt must never overwrite an
+    // order that is already paid. (A VOIDED — a real reversal of the paid
+    // transaction — is still allowed through.)
+    if (order.status === "paid" && (mappedStatus === "declined" || mappedStatus === "error")) {
+      console.error("wompi webhook: ignoring", wompiStatus, "for already-paid order", reference);
       return NextResponse.json({ ok: true });
     }
 
@@ -119,17 +148,16 @@ export async function POST(request: NextRequest) {
 
     const { error } = await admin.from("wompi_orders").update(update).eq("reference", reference);
     if (error) {
-      // Logged, not surfaced as a failure response — a DB error here isn't
-      // something a Wompi retry (same payload) can fix, so there's no
-      // benefit to triggering their retry loop over it.
+      // A failed write is exactly what a retry of the same payload DOES fix
+      // (the DB is usually back a moment later) — answer 5xx so Wompi
+      // resends, instead of losing the payment.
       console.error("wompi webhook: failed to update order", reference, error.message);
+      return NextResponse.json({ error: "No se pudo actualizar la orden" }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("wompi webhook: unexpected error", err);
-    // Still 200: a malformed/unexpected payload isn't something a retry of
-    // the same bytes would fix either.
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ error: "Error inesperado" }, { status: 500 });
   }
 }

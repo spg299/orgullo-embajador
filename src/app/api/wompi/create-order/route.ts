@@ -70,8 +70,19 @@ export async function POST(request: NextRequest) {
       })
       .filter((item): item is NonNullable<typeof item> => item !== null);
 
-    if (items.length === 0) {
+    // Reject the whole request rather than silently dropping bad lines —
+    // otherwise the buyer would be charged for fewer tickets than they asked for.
+    if (items.length === 0 || items.length !== selections.length) {
       return NextResponse.json({ error: "Selección inválida" }, { status: 400 });
+    }
+
+    const publicKey = process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY;
+    const integritySecret = process.env.WOMPI_INTEGRITY_SECRET;
+
+    // Checked before the order is inserted, so a misconfigured environment
+    // never leaves orphaned 'pending_payment' rows behind.
+    if (!publicKey || !integritySecret) {
+      return NextResponse.json({ error: "Wompi no está configurado" }, { status: 500 });
     }
 
     const subtotal = items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
@@ -114,13 +125,6 @@ export async function POST(request: NextRequest) {
 
     if (itemsError) {
       return NextResponse.json({ error: itemsError.message }, { status: 400 });
-    }
-
-    const publicKey = process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY;
-    const integritySecret = process.env.WOMPI_INTEGRITY_SECRET;
-
-    if (!publicKey || !integritySecret) {
-      return NextResponse.json({ error: "Wompi no está configurado" }, { status: 500 });
     }
 
     const amountInCents = Math.round(total * 100);

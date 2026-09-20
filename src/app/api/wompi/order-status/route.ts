@@ -67,9 +67,17 @@ export async function GET(request: NextRequest) {
       "status, match_label, total, buyer_full_name, buyer_whatsapp, buyer_email, access_token, whatsapp_redirected_at, wompi_order_items(tier_name, quantity)",
     )
     .eq("reference", reference)
-    .single();
+    .maybeSingle();
 
-  if (error || !order || order.access_token !== token) {
+  // A real DB failure is NOT "order not found": answering 404 here would make
+  // the result page stop polling and tell a buyer who just paid that their
+  // order doesn't exist. 5xx lets the page keep retrying.
+  if (error) {
+    console.error("wompi order-status: query failed", error.message);
+    return NextResponse.json({ error: "No se pudo consultar la orden" }, { status: 500 });
+  }
+
+  if (!order || order.access_token !== token) {
     return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
   }
 
@@ -104,7 +112,10 @@ export async function GET(request: NextRequest) {
       items,
       total: order.total,
     });
-    response.whatsappUrl = `https://wa.me/${settings.whatsapp_number}?text=${encodeURIComponent(message)}`;
+    // wa.me only accepts bare digits — strip any "+", spaces or dashes an
+    // admin may have typed into /admin/configuracion.
+    const whatsappDigits = settings.whatsapp_number.replace(/\D/g, "");
+    response.whatsappUrl = `https://wa.me/${whatsappDigits}?text=${encodeURIComponent(message)}`;
   }
 
   return NextResponse.json(response);

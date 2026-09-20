@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Container from "@/components/ui/Container";
@@ -18,8 +18,13 @@ interface OrderStatusResult {
   whatsappUrl?: string;
 }
 
-const MAX_ATTEMPTS = 40; // ~2 minutes at 3s intervals
-const POLL_INTERVAL_MS = 3000;
+// Fast phase (~2 min at 3s) covers cards; the slower tail (~10 more min at
+// 10s) covers PSE / bank / Nequi, where Wompi can take several minutes to
+// confirm and the buyer would otherwise be left on a dead "en proceso" page.
+const FAST_ATTEMPTS = 40;
+const MAX_ATTEMPTS = 100;
+const FAST_INTERVAL_MS = 3000;
+const SLOW_INTERVAL_MS = 10000;
 
 const shellClasses =
   "mx-auto max-w-lg rounded-3xl border border-navy-900/8 bg-white p-6 text-center shadow-card sm:p-10";
@@ -34,16 +39,19 @@ export default function PaymentResult() {
   const [timedOut, setTimedOut] = useState(false);
   // Guards against opening WhatsApp twice within this same page session
   // (e.g. two poll ticks both seeing whatsappRedirected: false before the
-  // mark-redirected call lands) — the durable, reload-proof guard is the
-  // server's whatsapp_redirected_at column, reflected in whatsappRedirected.
-  const [autoOpened, setAutoOpened] = useState(false);
+  // mark-redirected call lands, or React re-running the effect) — a ref, so
+  // it's set synchronously. The durable, reload-proof guard is the server's
+  // whatsapp_redirected_at column, reflected in whatsappRedirected.
+  const autoOpened = useRef(false);
 
   // Self-scheduling poll — this page is the Wompi redirect-url target, and
   // per spec it NEVER treats the buyer's return here as proof of anything.
   // Every status shown comes from this repeated round-trip into Supabase,
   // which only ever reflects what /api/wompi/webhook already verified and
   // wrote. Stops on any terminal status, on a 404 (unknown reference), or
-  // after MAX_ATTEMPTS if the order is still pending_payment.
+  // after MAX_ATTEMPTS if the order is still pending_payment. Any other
+  // failure (5xx, network, non-JSON body) is treated as transient and
+  // retried — it must never be mistaken for a terminal answer.
   useEffect(() => {
     if (!reference || !token) return;
     let cancelled = false;
@@ -60,10 +68,12 @@ export default function PaymentResult() {
           if (!cancelled) setNotFound(true);
           return;
         }
-        const body: OrderStatusResult = await res.json();
-        if (cancelled) return;
-        setResult(body);
-        if (body.status !== "pending_payment") return;
+        if (res.ok) {
+          const body: OrderStatusResult = await res.json();
+          if (cancelled) return;
+          setResult(body);
+          if (body.status !== "pending_payment") return;
+        }
       } catch {
         // Network hiccup — keep trying on the next tick.
       }
@@ -73,7 +83,9 @@ export default function PaymentResult() {
         if (!cancelled) setTimedOut(true);
         return;
       }
-      if (!cancelled) timeoutId = setTimeout(tick, POLL_INTERVAL_MS);
+      if (!cancelled) {
+        timeoutId = setTimeout(tick, count < FAST_ATTEMPTS ? FAST_INTERVAL_MS : SLOW_INTERVAL_MS);
+      }
     }
 
     tick();
@@ -88,34 +100,41 @@ export default function PaymentResult() {
   // (never because the buyer merely landed back on this page from Wompi)
   // and only the first time: whatsappRedirected persists server-side, so a
   // reload of this exact URL never re-opens WhatsApp again.
+  //
+  // This runs with no user gesture (the buyer just arrived from Wompi), so
+  // browsers — iOS Safari and in-app browsers especially — may block a new
+  // window. We therefore open it synchronously (no await first, which is
+  // what used to lose the browser's popup allowance) and, if it was
+  // blocked, fall back to navigating this same tab, which is never
+  // blocked. The order is only marked as redirected AFTER one of the two
+  // actually happened, so a blocked attempt never permanently suppresses
+  // the auto-open on the next reload.
   useEffect(() => {
     if (!result || result.status !== "paid" || !result.whatsappUrl) return;
-    if (result.whatsappRedirected || autoOpened) return;
+    if (result.whatsappRedirected || autoOpened.current) return;
 
     const whatsappUrl = result.whatsappUrl;
-    let cancelled = false;
+    autoOpened.current = true;
 
-    (async () => {
-      try {
-        await fetch("/api/wompi/mark-redirected", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reference, token }),
-        });
-      } catch {
-        // Best-effort — the manual "Abrir WhatsApp" button below still
-        // works even if this call fails; worst case a reload could open
-        // WhatsApp once more.
-      }
-      if (cancelled) return;
-      window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-      setAutoOpened(true);
-    })();
+    // Deliberately not "noopener" in the features string: that makes
+    // window.open always return null, which would make a blocked popup
+    // indistinguishable from a successful one.
+    const opened = window.open(whatsappUrl, "_blank");
+    if (opened) opened.opener = null;
 
-    return () => {
-      cancelled = true;
-    };
-  }, [result, autoOpened, reference, token]);
+    // keepalive so the request still completes if we navigate away below.
+    fetch("/api/wompi/mark-redirected", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reference, token }),
+      keepalive: true,
+    }).catch(() => {
+      // Best-effort — the manual "Abrir WhatsApp" button still works; worst
+      // case a reload opens WhatsApp once more.
+    });
+
+    if (!opened) window.location.assign(whatsappUrl);
+  }, [result, reference, token]);
 
   if (!reference || !token) {
     return (
@@ -184,8 +203,9 @@ export default function PaymentResult() {
           </p>
           <p className="mt-1 text-xs font-medium text-navy-700/50">Referencia: {reference}</p>
           <p className="mx-auto mt-4 max-w-sm text-sm font-medium text-navy-700/70">
-            Estamos abriendo WhatsApp automáticamente para confirmar tu compra. Si no se abrió, usa
-            el botón de abajo.
+            {result.whatsappRedirected
+              ? "Tu pago está confirmado. Escríbenos por WhatsApp para recibir tus boletas."
+              : "Estamos abriendo WhatsApp automáticamente para confirmar tu compra. Si no se abrió, usa el botón de abajo."}
           </p>
           {result.whatsappUrl && (
             <a href={result.whatsappUrl} target="_blank" rel="noopener noreferrer" className="mt-6 inline-block">
