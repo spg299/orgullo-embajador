@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import Button from "@/components/ui/Button";
-import { PencilIcon, TrashIcon, UploadIcon } from "@/components/ui/Icons";
+import { PencilIcon, TrashIcon, UploadIcon, TagIcon } from "@/components/ui/Icons";
 import { DataTable, type DataTableColumn } from "@/components/ui/admin/DataTable";
 import { useDataTable } from "@/components/ui/admin/useDataTable";
 import { Dialog } from "@/components/ui/admin/Dialog";
@@ -231,6 +232,14 @@ export default function AdminMatchesPage() {
           columns={columns}
           renderActions={(match) => (
             <>
+              <Link
+                href={`/admin/matches/${match.id}/precios`}
+                aria-label="Precios"
+                title="Gestionar precios de este partido"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-admin-text-muted transition-colors hover:bg-admin-bg hover:text-admin-text"
+              >
+                <TagIcon className="h-4 w-4" />
+              </Link>
               <button
                 type="button"
                 aria-label="Editar"

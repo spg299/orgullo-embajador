@@ -10,8 +10,11 @@ import PurchaseForm from "@/components/purchase/PurchaseForm";
 import OrderSummary from "@/components/purchase/OrderSummary";
 import WhatsAppCheckoutBox from "@/components/purchase/WhatsAppCheckoutBox";
 import CardCheckoutBox from "@/components/purchase/CardCheckoutBox";
-import { CalendarIcon, MapPinIcon, WhatsAppIcon, CardIcon } from "@/components/ui/Icons";
+import NequiCheckoutBox from "@/components/purchase/NequiCheckoutBox";
+import { CalendarIcon, MapPinIcon, WhatsAppIcon, CardIcon, WalletIcon } from "@/components/ui/Icons";
 import { tiers, fetchTiers } from "@/data/tiers";
+import { fetchMatchTiers } from "@/data/matchTiers";
+import { siteSettings as defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
 import {
   initialBuyerFormValues,
   validateBuyerForm,
@@ -22,18 +25,44 @@ import type { Match } from "@/data/matches";
 export default function PurchaseFlow({ match }: { match: Match }) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"whatsapp" | "card">("whatsapp");
+  const [paymentMethod, setPaymentMethod] = useState<"whatsapp" | "card" | "nequi">("whatsapp");
   // Seeded with the static fallback for an identical first paint; upgraded
   // silently to the live /admin/precios data once the fetch resolves.
   const [baseTiers, setBaseTiers] = useState(tiers);
+  // Only used to gate the Nequi toggle — off by default (nequi_enabled:
+  // "false" in the static fallback) until the fetch confirms it's on.
+  const [siteSettings, setSiteSettings] = useState(defaultSiteSettings);
   const [buyerForm, setBuyerForm] = useState<BuyerFormValues>(initialBuyerFormValues);
   const [touchedFields, setTouchedFields] = useState<
     Partial<Record<keyof BuyerFormValues, boolean>>
   >({});
 
+  // If this match has its own localidades (public.match_tiers, managed from
+  // /admin/matches/[id]/precios) those replace the general list entirely for
+  // this checkout; otherwise fall back to the general tiers exactly like
+  // every match behaved before match-specific pricing existed.
   useEffect(() => {
-    fetchTiers().then(setBaseTiers);
+    let cancelled = false;
+    fetchMatchTiers(match.id).then((matchTiers) => {
+      if (cancelled) return;
+      if (matchTiers.length > 0) {
+        setBaseTiers(matchTiers);
+      } else {
+        fetchTiers().then((general) => {
+          if (!cancelled) setBaseTiers(general);
+        });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [match.id]);
+
+  useEffect(() => {
+    fetchSiteSettings().then(setSiteSettings);
   }, []);
+
+  const nequiEnabled = siteSettings.nequi_enabled === "true";
 
   const selections = useMemo(
     () =>
@@ -175,7 +204,7 @@ export default function PurchaseFlow({ match }: { match: Match }) {
                 <p className="px-3 pt-2 text-xs font-semibold uppercase tracking-wider text-navy-700/50">
                   Método de pago
                 </p>
-                <div className="mt-2 grid grid-cols-2 gap-2">
+                <div className={`mt-2 grid gap-2 ${nequiEnabled ? "grid-cols-3" : "grid-cols-2"}`}>
                   <button
                     type="button"
                     onClick={() => setPaymentMethod("whatsapp")}
@@ -200,11 +229,35 @@ export default function PurchaseFlow({ match }: { match: Match }) {
                     <CardIcon className="h-4 w-4" />
                     Tarjeta
                   </button>
+                  {nequiEnabled && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("nequi")}
+                      className={`flex items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-semibold transition-colors ${
+                        paymentMethod === "nequi"
+                          ? "bg-[#e6007e] text-white"
+                          : "text-navy-700/70 hover:bg-navy-900/5"
+                      }`}
+                    >
+                      <WalletIcon className="h-4 w-4" />
+                      Nequi
+                    </button>
+                  )}
                 </div>
               </div>
             )}
 
-            {paymentMethod === "whatsapp" || submitted ? (
+            {paymentMethod === "nequi" ? (
+              <NequiCheckoutBox
+                match={match}
+                selections={selections}
+                subtotal={subtotal}
+                total={total}
+                buyer={buyerForm}
+                disabled={Boolean(disabledReason)}
+                disabledReason={disabledReason}
+              />
+            ) : paymentMethod === "whatsapp" || submitted ? (
               <WhatsAppCheckoutBox
                 match={match}
                 selections={selections}
