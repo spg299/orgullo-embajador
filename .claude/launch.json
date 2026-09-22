@@ -4,8 +4,14 @@
     {
       "name": "orgullo-embajador-dev",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "cd '/Users/santiagopg/Desktop/Orgullo embajador 1' && export PATH=\"/Users/santiagopg/Desktop/Orgullo embajador 1/.node-runtime/bin:$PATH\" && exec npm run dev"],
+      "runtimeArgs": ["-c", "cd '/Users/santiagopg/Desktop/Proyectos 1/Orgullo embajador 1' && export PATH=\"/Users/santiagopg/Desktop/Proyectos 1/Orgullo embajador 1/.node-runtime/bin:$PATH\" && exec npm run dev"],
       "port": 3000
+    },
+    {
+      "name": "veroli-static",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /tmp/veroli-live-preview && exec python3 -m http.server 4173"],
+      "port": 4173
     }
   ]
 }
