@@ -5,6 +5,7 @@ import { computeIntegritySignature } from "@/lib/wompi/signature";
 import { calculateProcessingFee } from "@/lib/wompi/fees";
 import { SITE_URL } from "@/lib/email/config";
 import { checkRateLimit, clientIp } from "@/lib/rateLimit";
+import { resolveTierRows } from "@/lib/pricing/resolveTierRows";
 
 const CURRENCY = "COP";
 const MAX_QUANTITY_PER_TIER = 20;
@@ -14,8 +15,9 @@ const RATE_LIMIT_MAX = 8;
 // Public, unauthenticated route: called from the checkout page right
 // before redirecting to Wompi. Prices are never trusted from the client —
 // only tierId + quantity are read from the request; unit price and tier
-// name are always re-fetched live from `tiers`, the same table
-// /admin/precios writes to, so the amount actually charged can never be
+// name are always re-fetched live via resolveTierRows (public.match_tiers
+// if this match has its own locality list, else the general `tiers` table
+// /admin/precios writes to), so the amount actually charged can never be
 // tampered with client-side.
 export async function POST(request: NextRequest) {
   try {
@@ -51,22 +53,27 @@ export async function POST(request: NextRequest) {
     const admin = getSupabaseAdmin();
 
     const tierIds = [...new Set(selections.map((s) => s.tierId))];
-    const { data: tierRows, error: tiersError } = await admin
-      .from("tiers")
-      .select("id, name, price")
-      .in("id", tierIds);
+    const { rows: tierRows, matchSpecific, error: tiersError } = await resolveTierRows(admin, matchId, tierIds);
 
-    if (tiersError || !tierRows || tierRows.length === 0) {
+    if (tiersError || tierRows.length === 0) {
       return NextResponse.json({ error: "No se pudieron validar las localidades" }, { status: 400 });
     }
 
-    const tierById = new Map(tierRows.map((t) => [t.id as string, t]));
+    const tierById = new Map(tierRows.map((t) => [t.id, t]));
     const items = selections
       .map((s) => {
         const tier = tierById.get(s.tierId);
         const quantity = Math.trunc(s.quantity);
         if (!tier || !Number.isFinite(quantity) || quantity <= 0 || quantity > MAX_QUANTITY_PER_TIER) return null;
-        return { tier_id: tier.id as string, tier_name: tier.name as string, quantity, unit_price: tier.price as number };
+        // Localidades propias de un partido (match_tiers) no viven en
+        // public.tiers, así que su id no es un tier_id válido para el FK
+        // nullable de wompi_order_items — mismo patrón que el flujo femenino.
+        return {
+          tier_id: matchSpecific ? null : tier.id,
+          tier_name: tier.name,
+          quantity,
+          unit_price: tier.price,
+        };
       })
       .filter((item): item is NonNullable<typeof item> => item !== null);
 
