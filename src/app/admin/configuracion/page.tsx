@@ -9,6 +9,7 @@ import { siteSettings as defaultSiteSettings, type SiteSettings } from "@/data/s
 import type { Advisor } from "@/data/advisors";
 import { isMaintenanceAllowed } from "@/lib/maintenanceAccess";
 import { Input } from "@/components/ui/admin/Input";
+import { Textarea } from "@/components/ui/admin/Textarea";
 import { Select } from "@/components/ui/admin/Select";
 import { Checkbox } from "@/components/ui/admin/Checkbox";
 import { Skeleton, SkeletonCard } from "@/components/ui/admin/Skeleton";
@@ -62,6 +63,14 @@ const LOGO_FIELDS: { key: "site_logo_url" | "millonarios_crest_url"; label: stri
   { key: "millonarios_crest_url", label: "Escudo de Millonarios FC", folder: "millonarios" },
 ];
 
+const NEQUI_QR_FIELD = { key: "nequi_qr_url" as const, label: "Código QR de Nequi", folder: "nequi" as const };
+
+const NEQUI_TEXT_FIELDS: { key: keyof SiteSettings; label: string; hint?: string }[] = [
+  { key: "nequi_display_name", label: "Nombre a mostrar", hint: "Ej. Orgullo Embajador" },
+  { key: "nequi_holder_name", label: "Titular / negocio", hint: "Ej. John Perdomo" },
+  { key: "nequi_key", label: "Llave o número Nequi", hint: "Ej. 0093326841" },
+];
+
 export default function AdminConfiguracionPage() {
   const toast = useToast();
   const { user } = useAuth();
@@ -72,7 +81,7 @@ export default function AdminConfiguracionPage() {
   const [error, setError] = useState<string | null>(null);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const pendingUpload = useRef<(typeof LOGO_FIELDS)[number] | null>(null);
+  const pendingUpload = useRef<{ key: keyof SiteSettings; label: string; folder: string } | null>(null);
 
   const [advisors, setAdvisors] = useState<Advisor[] | null>(null);
   const [advisorUsers, setAdvisorUsers] = useState<AdvisorUser[]>([]);
@@ -301,8 +310,7 @@ export default function AdminConfiguracionPage() {
     }
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function saveSettings() {
     setSaving(true);
     setSaved(false);
     setError(null);
@@ -327,6 +335,14 @@ export default function AdminConfiguracionPage() {
       setError(message);
       toast.error(message);
     }
+  }
+
+  // The Nequi section below lives outside this <form> (it's in its own
+  // card), so its own "Guardar cambios" button calls saveSettings()
+  // directly instead of relying on this submit handler.
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    await saveSettings();
   }
 
   return (
@@ -422,6 +438,100 @@ export default function AdminConfiguracionPage() {
               {saved && <span className="text-sm font-medium text-emerald-600">¡Guardado!</span>}
             </div>
           </form>
+        )}
+      </div>
+
+      <div className="mt-8 rounded-admin-xl border border-admin-border bg-admin-surface p-6 shadow-admin-xs sm:p-8">
+        <h2 className="font-display text-xl font-bold tracking-tight text-admin-text">
+          Métodos de pago
+        </h2>
+        <p className="mt-1 text-sm font-medium text-admin-text-muted">
+          Configura los métodos de pago que ven tus compradores en el checkout. Solo tú, como
+          administrador, puedes cambiar esta información — los compradores solo la ven.
+        </p>
+
+        {loading ? (
+          <div className="mt-6 flex flex-col gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-6 rounded-admin-lg border border-admin-border bg-admin-bg p-5">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-base font-bold tracking-tight text-admin-text">Nequi</h3>
+              <Checkbox
+                label={settings.nequi_enabled === "true" ? "Activo" : "Inactivo"}
+                checked={settings.nequi_enabled === "true"}
+                onChange={(e) => setSettings({ ...settings, nequi_enabled: e.target.checked ? "true" : "false" })}
+              />
+            </div>
+            <p className="mt-1 text-xs font-medium text-admin-text-muted">
+              Mientras esté inactivo, el checkout no muestra la opción Nequi para nadie — aunque el
+              QR y los demás datos ya estén configurados.
+            </p>
+
+            <div className="mt-5 flex items-center gap-4">
+              {settings.nequi_qr_url ? (
+                // eslint-disable-next-line @next/next/no-img-element -- admin-supplied Supabase Storage URL
+                <img
+                  src={settings.nequi_qr_url}
+                  alt="Código QR de Nequi"
+                  className="h-20 w-20 rounded-admin-md border border-admin-border bg-white object-contain p-1"
+                />
+              ) : (
+                <div className="flex h-20 w-20 items-center justify-center rounded-admin-md border border-dashed border-admin-border text-xs font-medium text-admin-text-muted">
+                  Sin QR
+                </div>
+              )}
+              <div className="flex-1">
+                <p className="text-sm font-medium text-admin-text/80">{NEQUI_QR_FIELD.label}</p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="mt-1.5"
+                  icon={<UploadIcon className="h-4 w-4" />}
+                  disabled={uploadingKey === NEQUI_QR_FIELD.key}
+                  onClick={() => {
+                    pendingUpload.current = NEQUI_QR_FIELD;
+                    fileInputRef.current?.click();
+                  }}
+                >
+                  {uploadingKey === NEQUI_QR_FIELD.key ? "Subiendo..." : "Subir QR"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-3">
+              {NEQUI_TEXT_FIELDS.map((field) => (
+                <Input
+                  key={field.key}
+                  label={field.label}
+                  hint={field.hint}
+                  value={settings[field.key]}
+                  onChange={(e) => setSettings({ ...settings, [field.key]: e.target.value })}
+                />
+              ))}
+            </div>
+
+            <Textarea
+              label="Instrucciones para el comprador"
+              rows={3}
+              className="mt-4"
+              value={settings.nequi_instructions}
+              onChange={(e) => setSettings({ ...settings, nequi_instructions: e.target.value })}
+            />
+
+            {error && <p className="mt-3 text-sm text-rose-500">{error}</p>}
+
+            <div className="mt-4 flex items-center gap-3">
+              <Button type="button" variant="primary" size="sm" disabled={saving} onClick={saveSettings}>
+                {saving ? "Guardando..." : "Guardar cambios"}
+              </Button>
+              {saved && <span className="text-sm font-medium text-emerald-600">¡Guardado!</span>}
+            </div>
+          </div>
         )}
       </div>
 

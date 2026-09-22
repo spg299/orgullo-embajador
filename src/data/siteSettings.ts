@@ -12,6 +12,13 @@ export interface SiteSettings {
   hero_button_label: string;
   site_logo_url: string;
   millonarios_crest_url: string;
+  /** "true" / "false" (site_settings stores plain text) — off until an admin configures and enables it. */
+  nequi_enabled: string;
+  nequi_display_name: string;
+  nequi_holder_name: string;
+  nequi_key: string;
+  nequi_instructions: string;
+  nequi_qr_url: string;
 }
 
 // Static fallback — identical to what's already hardcoded across the site
@@ -31,6 +38,13 @@ export const siteSettings: SiteSettings = {
   hero_button_label: "Comprar ahora",
   site_logo_url: "/images/logo-orgullo-embajador.png",
   millonarios_crest_url: "/images/crests/millonarios.png",
+  nequi_enabled: "false",
+  nequi_display_name: "Orgullo Embajador",
+  nequi_holder_name: "",
+  nequi_key: "",
+  nequi_instructions:
+    "Escanea el código QR o envía el pago a la llave Nequi que aparece abajo. Cuando termines, pulsa \"Ya realicé el pago\" y envíanos el comprobante por WhatsApp.",
+  nequi_qr_url: "",
 };
 
 interface SettingRow {

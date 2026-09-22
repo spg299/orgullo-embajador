@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, clientIp } from "@/lib/rateLimit";
+import { resolveTierRows } from "@/lib/pricing/resolveTierRows";
+import { resolvePaymentMethod } from "@/lib/payments/resolvePaymentMethod";
 
 const MAX_QUANTITY_PER_TIER = 20;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
@@ -18,8 +20,9 @@ interface CheckoutSelection {
 //
 // Price/quantity are never trusted from the client — only tierId + quantity
 // are read from the request; unit price and tier name are always re-fetched
-// live from `tiers` (the same table /admin/precios writes to), exactly the
-// same pattern already used by /api/wompi/create-order. This is a reporting
+// live via resolveTierRows (public.match_tiers if this match has its own
+// locality list, else the general `tiers` table /admin/precios writes to),
+// exactly the same pattern already used by /api/wompi/create-order. This is a reporting
 // record for Ventas/Dashboard, not itself a live payment, but a tampered
 // price here would still corrupt real business figures.
 export async function POST(request: NextRequest) {
@@ -35,11 +38,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { matchId, matchLabel, buyer, selections } = body as {
+    const { matchId, matchLabel, buyer, selections, paymentMethod } = body as {
       matchId: string | null;
       matchLabel: string;
       buyer: { fullName: string; whatsapp: string; email: string };
       selections: { tierId: string; quantity: number }[];
+      paymentMethod?: string;
     };
 
     if (
@@ -55,27 +59,36 @@ export async function POST(request: NextRequest) {
 
     const admin = getSupabaseAdmin();
 
-    const tierIds = [...new Set((selections as CheckoutSelection[]).map((s) => s.tierId))];
-    const { data: tierRows, error: tiersError } = await admin
-      .from("tiers")
-      .select("id, name, price")
-      .in("id", tierIds);
+    const {
+      method: resolvedPaymentMethod,
+      status: initialStatus,
+      error: paymentMethodError,
+    } = await resolvePaymentMethod(admin, paymentMethod);
+    if (paymentMethodError) {
+      return NextResponse.json({ ok: false, error: paymentMethodError }, { status: 400 });
+    }
 
-    if (tiersError || !tierRows || tierRows.length === 0) {
+    const tierIds = [...new Set((selections as CheckoutSelection[]).map((s) => s.tierId))];
+    const { rows: tierRows, matchSpecific, error: tiersError } = await resolveTierRows(admin, matchId, tierIds);
+
+    if (tiersError || tierRows.length === 0) {
       return NextResponse.json({ ok: false, error: "No se pudieron validar las localidades" }, { status: 400 });
     }
 
-    const tierById = new Map(tierRows.map((t) => [t.id as string, t]));
+    const tierById = new Map(tierRows.map((t) => [t.id, t]));
     const items = (selections as CheckoutSelection[])
       .map((s) => {
         const tier = tierById.get(s.tierId);
         const quantity = Math.trunc(s.quantity);
         if (!tier || !Number.isFinite(quantity) || quantity <= 0 || quantity > MAX_QUANTITY_PER_TIER) return null;
         return {
-          tier_id: tier.id as string,
-          tier_name: tier.name as string,
+          // Localidades propias de un partido (match_tiers) no viven en
+          // public.tiers, así que su id no es un tier_id válido para el FK
+          // nullable de sale_items — mismo patrón que el flujo femenino.
+          tier_id: matchSpecific ? null : tier.id,
+          tier_name: tier.name,
           quantity,
-          unit_price: tier.price as number,
+          unit_price: tier.price,
         };
       })
       .filter((item): item is NonNullable<typeof item> => item !== null);
@@ -99,6 +112,8 @@ export async function POST(request: NextRequest) {
         subtotal,
         total,
         quantity,
+        payment_method: resolvedPaymentMethod,
+        status: initialStatus,
       })
       .select("id")
       .single();

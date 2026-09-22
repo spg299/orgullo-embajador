@@ -23,6 +23,10 @@ export async function POST(request: NextRequest) {
     update.status = status;
     const timestampField = TIMESTAMP_FIELD[status as SaleStatus];
     if (timestampField) update[timestampField] = new Date().toISOString();
+    // Traceability: who confirmed this sale — only ever set on the
+    // transition into "confirmada", so switching a sale to a different
+    // status later never overwrites who originally confirmed it.
+    if (status === "confirmada") update.confirmed_by = admin.id;
   }
 
   if (advisor_id !== undefined) {

@@ -146,6 +146,17 @@ export default function AdminVentasPage() {
       ),
     },
     {
+      key: "payment_method",
+      header: "Método",
+      sortable: true,
+      render: (s) =>
+        s.payment_method === "nequi" ? (
+          <Badge variant="warning" dot={false}>Nequi</Badge>
+        ) : (
+          <Badge variant="neutral" dot={false}>WhatsApp</Badge>
+        ),
+    },
+    {
       key: "quantity",
       header: "Boletas",
       sortable: true,

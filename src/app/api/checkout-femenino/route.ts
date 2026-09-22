@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, clientIp } from "@/lib/rateLimit";
+import { resolvePaymentMethod } from "@/lib/payments/resolvePaymentMethod";
 
 const MAX_QUANTITY_PER_TIER = 20;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
@@ -34,11 +35,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { femaleMatchId, matchLabel, buyer, selections } = body as {
+    const { femaleMatchId, matchLabel, buyer, selections, paymentMethod } = body as {
       femaleMatchId: string;
       matchLabel: string;
       buyer: { fullName: string; whatsapp: string; email: string };
       selections: CheckoutSelection[];
+      paymentMethod?: string;
     };
 
     if (
@@ -54,6 +56,15 @@ export async function POST(request: NextRequest) {
     }
 
     const admin = getSupabaseAdmin();
+
+    const {
+      method: resolvedPaymentMethod,
+      status: initialStatus,
+      error: paymentMethodError,
+    } = await resolvePaymentMethod(admin, paymentMethod);
+    if (paymentMethodError) {
+      return NextResponse.json({ ok: false, error: paymentMethodError }, { status: 400 });
+    }
 
     const { data: femaleMatch, error: matchError } = await admin
       .from("female_matches")
@@ -111,6 +122,8 @@ export async function POST(request: NextRequest) {
         subtotal,
         total,
         quantity,
+        payment_method: resolvedPaymentMethod,
+        status: initialStatus,
       })
       .select("id")
       .single();

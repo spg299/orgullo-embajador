@@ -53,6 +53,7 @@ function saleEventLabel(sale: SaleRow): string {
   }
   if (sale.status === "cancelada") return `Venta cancelada — ${sale.match_label}`;
   if (sale.status === "confirmada") return `Venta confirmada — ${sale.match_label}`;
+  if (sale.status === "pago_pendiente") return `Pago Nequi pendiente de verificación — ${sale.match_label}`;
   return `Nueva solicitud — ${sale.match_label}`;
 }
 

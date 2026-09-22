@@ -10,7 +10,8 @@ import PurchaseForm from "@/components/purchase/PurchaseForm";
 import OrderSummary from "@/components/purchase/OrderSummary";
 import FemaleWhatsAppCheckoutBox from "@/components/purchase/FemaleWhatsAppCheckoutBox";
 import FemaleCardCheckoutBox from "@/components/purchase/FemaleCardCheckoutBox";
-import { CalendarIcon, MapPinIcon, WhatsAppIcon, CardIcon } from "@/components/ui/Icons";
+import FemaleNequiCheckoutBox from "@/components/purchase/FemaleNequiCheckoutBox";
+import { CalendarIcon, MapPinIcon, WhatsAppIcon, CardIcon, WalletIcon } from "@/components/ui/Icons";
 import {
   initialBuyerFormValues,
   validateBuyerForm,
@@ -18,6 +19,7 @@ import {
 } from "@/lib/purchaseFormValidation";
 import type { FemaleMatch } from "@/data/femaleMatches";
 import { fetchFemaleTiers, type FemaleTier } from "@/data/femaleTiers";
+import { siteSettings as defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
 import type { Match } from "@/data/matches";
 
 // Women's matches share one locality/price list (female_tiers, managed from
@@ -30,15 +32,22 @@ export default function FemalePurchaseFlow({ femaleMatch }: { femaleMatch: Femal
   const [baseTiers, setBaseTiers] = useState<FemaleTier[]>([]);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"whatsapp" | "card">("whatsapp");
+  const [paymentMethod, setPaymentMethod] = useState<"whatsapp" | "card" | "nequi">("whatsapp");
   const [buyerForm, setBuyerForm] = useState<BuyerFormValues>(initialBuyerFormValues);
   const [touchedFields, setTouchedFields] = useState<
     Partial<Record<keyof BuyerFormValues, boolean>>
   >({});
+  const [siteSettings, setSiteSettings] = useState(defaultSiteSettings);
 
   useEffect(() => {
     fetchFemaleTiers().then(setBaseTiers);
   }, []);
+
+  useEffect(() => {
+    fetchSiteSettings().then(setSiteSettings);
+  }, []);
+
+  const nequiEnabled = siteSettings.nequi_enabled === "true";
 
   // Adapter so OrderSummary/the header card (both built for the men's
   // Match shape) render correctly without any changes to those components.
@@ -197,7 +206,7 @@ export default function FemalePurchaseFlow({ femaleMatch }: { femaleMatch: Femal
                 <p className="px-3 pt-2 text-xs font-semibold uppercase tracking-wider text-navy-700/50">
                   Método de pago
                 </p>
-                <div className="mt-2 grid grid-cols-2 gap-2">
+                <div className={`mt-2 grid gap-2 ${nequiEnabled ? "grid-cols-3" : "grid-cols-2"}`}>
                   <button
                     type="button"
                     onClick={() => setPaymentMethod("whatsapp")}
@@ -222,11 +231,35 @@ export default function FemalePurchaseFlow({ femaleMatch }: { femaleMatch: Femal
                     <CardIcon className="h-4 w-4" />
                     Tarjeta
                   </button>
+                  {nequiEnabled && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("nequi")}
+                      className={`flex items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-semibold transition-colors ${
+                        paymentMethod === "nequi"
+                          ? "bg-[#e6007e] text-white"
+                          : "text-navy-700/70 hover:bg-navy-900/5"
+                      }`}
+                    >
+                      <WalletIcon className="h-4 w-4" />
+                      Nequi
+                    </button>
+                  )}
                 </div>
               </div>
             )}
 
-            {paymentMethod === "whatsapp" || submitted ? (
+            {paymentMethod === "nequi" ? (
+              <FemaleNequiCheckoutBox
+                match={match}
+                selections={selections}
+                subtotal={subtotal}
+                total={total}
+                buyer={buyerForm}
+                disabled={Boolean(disabledReason)}
+                disabledReason={disabledReason}
+              />
+            ) : paymentMethod === "whatsapp" || submitted ? (
               <FemaleWhatsAppCheckoutBox
                 match={match}
                 selections={selections}
